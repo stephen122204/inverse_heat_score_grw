@@ -62,12 +62,70 @@ class ExperimentsConfig:
     run_oracle_score_stochastic: bool
     run_estimated_score_deterministic_raw: bool
     run_estimated_score_stochastic_raw: bool
+    # New regularized methods (default False so old YAML configs keep working)
+    run_estimated_score_deterministic_regularized: bool = False
+    run_estimated_score_stochastic_regularized: bool = False
 
 
 @dataclass
 class SafetyConfig:
     score_abs_fail_threshold: float
     value_abs_fail_threshold: float
+
+
+# ---------------------------------------------------------------------------
+# Regularization configuration (Phase 5+)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class EpsilonFloorConfig:
+    """Epsilon-floor regularization: denom = u + epsilon."""
+    enabled: bool = False
+    value: float = 1.0e-6
+    scale_by_peak: bool = False   # if True, epsilon = value * max(u)
+
+
+@dataclass
+class ScoreClippingConfig:
+    """Hard clip on estimated score magnitude: |s| clipped to max_abs_score."""
+    enabled: bool = False
+    max_abs_score: float = 100.0
+
+
+@dataclass
+class SmoothingConfig:
+    """Field smoothing before score estimation (not yet fully implemented)."""
+    enabled: bool = False
+    method: str = "gaussian"          # "gaussian" only for now
+    sigma_grid_points: float = 2.0    # smoothing sigma in grid-point units
+
+
+@dataclass
+class RegularizationConfig:
+    """
+    Top-level regularization config.
+    If enabled=False, all regularization is skipped (methods behave like raw).
+    Validation is performed on first use; see validate_regularization().
+    """
+    enabled: bool = False
+    epsilon_floor: EpsilonFloorConfig = field(default_factory=EpsilonFloorConfig)
+    score_clipping: ScoreClippingConfig = field(default_factory=ScoreClippingConfig)
+    smoothing: SmoothingConfig = field(default_factory=SmoothingConfig)
+
+
+def validate_regularization(reg: RegularizationConfig) -> None:
+    """Raise ValueError for invalid regularization settings."""
+    if not reg.enabled:
+        return
+    if reg.epsilon_floor.enabled:
+        if reg.epsilon_floor.value < 0.0:
+            raise ValueError(f"epsilon_floor.value must be nonnegative, got {reg.epsilon_floor.value}")
+    if reg.score_clipping.enabled:
+        if reg.score_clipping.max_abs_score <= 0.0:
+            raise ValueError(f"score_clipping.max_abs_score must be positive, got {reg.score_clipping.max_abs_score}")
+    if not reg.epsilon_floor.enabled and not reg.score_clipping.enabled and not reg.smoothing.enabled:
+        import warnings
+        warnings.warn("regularization.enabled=True but no specific regularizer is enabled.", stacklevel=3)
 
 
 @dataclass
@@ -78,6 +136,7 @@ class Config:
     grw: GRWConfig
     experiments: ExperimentsConfig
     safety: SafetyConfig
+    regularization: RegularizationConfig = field(default_factory=RegularizationConfig)
 
     @property
     def n_steps(self) -> int:
@@ -146,9 +205,42 @@ def load_config(path: str | Path) -> Config:
             run_oracle_score_stochastic=bool(e["run_oracle_score_stochastic"]),
             run_estimated_score_deterministic_raw=bool(e["run_estimated_score_deterministic_raw"]),
             run_estimated_score_stochastic_raw=bool(e["run_estimated_score_stochastic_raw"]),
+            run_estimated_score_deterministic_regularized=bool(
+                e.get("run_estimated_score_deterministic_regularized", False)),
+            run_estimated_score_stochastic_regularized=bool(
+                e.get("run_estimated_score_stochastic_regularized", False)),
         ),
         safety=SafetyConfig(
             score_abs_fail_threshold=float(s["score_abs_fail_threshold"]),
             value_abs_fail_threshold=float(s["value_abs_fail_threshold"]),
         ),
+        regularization=_parse_regularization(raw.get("regularization", {})),
     )
+
+
+def _parse_regularization(reg_raw: dict) -> RegularizationConfig:
+    """Parse the optional regularization YAML block."""
+    if not reg_raw:
+        return RegularizationConfig()
+    ef = reg_raw.get("epsilon_floor", {})
+    sc = reg_raw.get("score_clipping", {})
+    sm = reg_raw.get("smoothing", {})
+    cfg = RegularizationConfig(
+        enabled=bool(reg_raw.get("enabled", False)),
+        epsilon_floor=EpsilonFloorConfig(
+            enabled=bool(ef.get("enabled", False)),
+            value=float(ef.get("value", 1.0e-6)),
+            scale_by_peak=bool(ef.get("scale_by_peak", False)),
+        ),
+        score_clipping=ScoreClippingConfig(
+            enabled=bool(sc.get("enabled", False)),
+            max_abs_score=float(sc.get("max_abs_score", 100.0)),
+        ),
+        smoothing=SmoothingConfig(
+            enabled=bool(sm.get("enabled", False)),
+            method=str(sm.get("method", "gaussian")),
+            sigma_grid_points=float(sm.get("sigma_grid_points", 2.0)),
+        ),
+    )
+    validate_regularization(cfg)
+    return cfg

@@ -188,6 +188,20 @@ class MethodMetrics:
     max_score_error_L2: float
     # Timing
     runtime_seconds: float
+    # --- Optional extended fields (Phase 5+) ---
+    # Wasserstein-1 distance between candidate and true_u0 (treated as densities)
+    wasserstein: float = float("nan")
+    # Regularization info
+    regularization_enabled: bool = False
+    epsilon_value: float = float("nan")
+    clipping_enabled: bool = False
+    max_abs_score_clip: float = float("nan")
+    n_denom_below_eps_total: int = 0
+    n_clipped_total: int = 0
+    # Ratio: this method's rel_L2 / spectral_cutoff rel_L2 (for particle methods)
+    particle_rel_L2_over_spectral: float = float("nan")
+    # Method category: "particle", "baseline_spectral", "baseline_tikhonov"
+    method_category: str = "particle"
 
 
 # ---------------------------------------------------------------------------
@@ -282,4 +296,70 @@ def compute_metrics(
         max_abs_score_final=max_abs_score_final,
         max_score_error_L2=max_score_err_L2,
         runtime_seconds=result.runtime_seconds,
+        # Regularization diagnostics (from MethodResult extended fields)
+        epsilon_value=getattr(result, "epsilon_used", float("nan")),
+        n_denom_below_eps_total=int(sum(getattr(result, "n_denominator_below_epsilon", []))),
+        n_clipped_total=int(sum(getattr(result, "n_clipped_scores", []))),
     )
+
+
+# ---------------------------------------------------------------------------
+# Wasserstein-1 helper
+# ---------------------------------------------------------------------------
+
+def compute_wasserstein(
+    candidate: np.ndarray,
+    true_u0: np.ndarray,
+    x_grid: np.ndarray,
+) -> float:
+    """
+    Compute the Wasserstein-1 (Earth Mover's) distance between the candidate
+    and true_u0 treated as nonnegative distributions on x_grid.
+    Both are normalized to unit mass before comparison.
+    Returns NaN if either distribution has zero mass.
+    """
+    try:
+        from scipy.stats import wasserstein_distance
+    except ImportError:
+        return float("nan")
+
+    c = np.maximum(candidate, 0.0)
+    t = np.maximum(true_u0, 0.0)
+    mc = float(np.trapz(c, x_grid))
+    mt = float(np.trapz(t, x_grid))
+    if mc <= 0.0 or mt <= 0.0:
+        return float("nan")
+    c_norm = c / mc
+    t_norm = t / mt
+    return float(wasserstein_distance(x_grid, x_grid, c_norm, t_norm))
+
+
+# ---------------------------------------------------------------------------
+# Baseline metrics helper (spectral / Tikhonov)
+# ---------------------------------------------------------------------------
+
+def compute_baseline_metrics(
+    candidate: np.ndarray,
+    true_u0: np.ndarray,
+    observed_final: np.ndarray,
+    x_grid: np.ndarray,
+    cfg: "Config",
+    method_name: str,
+    method_category: str = "baseline_spectral",
+) -> MethodMetrics:
+    """
+    Compute metrics for a deterministic baseline (spectral cutoff, Tikhonov).
+    No MethodResult needed — takes the candidate array directly.
+    """
+    from .methods import MethodResult
+    # Wrap candidate in a minimal MethodResult so compute_metrics can be reused
+    fake_result = MethodResult(
+        method_name=method_name,
+        completed=True,
+        failure_step=None,
+        failure_msg="",
+        candidate=candidate,
+    )
+    m = compute_metrics(fake_result, true_u0, observed_final, x_grid, cfg)
+    m.method_category = method_category
+    return m

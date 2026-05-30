@@ -54,7 +54,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 from .config import Config
 from .globs import GlobState, field_to_globs, reconstruct_field, apply_reflecting_boundary
-from .scores import oracle_score, estimated_score_raw
+from .scores import oracle_score, estimated_score_raw, estimated_score_regularized
 
 
 # ---------------------------------------------------------------------------
@@ -100,6 +100,10 @@ class MethodResult:
     score_suspicious_steps: list = field(default_factory=list)
     # Wall-clock runtime in seconds
     runtime_seconds: float = 0.0
+    # Regularization diagnostics (populated only for regularized methods)
+    n_denominator_below_epsilon: list = field(default_factory=list)  # per step
+    n_clipped_scores: list = field(default_factory=list)             # per step
+    epsilon_used: float = 0.0  # effective epsilon (0 = raw/unregularized)
 
 
 # ---------------------------------------------------------------------------
@@ -138,6 +142,7 @@ def _run_integration(
     score_source: str,        # "oracle" or "estimated"
     oracle_mode: str = "normal",    # "normal" | "zero" | "flip"  (ablation)
     estimated_mode: str = "normal", # "normal" | "zero" | "flip"  (ablation)
+    use_regularization: bool = False,  # if True, use estimated_score_regularized
 ) -> MethodResult:
     """
     Generic integration loop.
@@ -212,23 +217,42 @@ def _run_integration(
                     x_min=state.x_min,
                     x_max=state.x_max,
                 )
-                scores, is_stable, msg = estimated_score_raw(positions, tmp_state, x_grid, cfg)
+                # --- Score computation (raw or regularized) ---
+                if use_regularization:
+                    scores, is_stable, msg, reg_diag = estimated_score_regularized(
+                        positions, tmp_state, x_grid, cfg)
+                else:
+                    scores, is_stable, msg = estimated_score_raw(positions, tmp_state, x_grid, cfg)
+                    reg_diag = None
+
                 if not is_stable:
                     result.failure_step = k
-                    result.failure_msg = f"Estimated score instability at step {k}: {msg}"
+                    result.failure_msg = f"{'Regularized' if use_regularization else 'Estimated'} score instability at step {k}: {msg}"
                     result.candidate = reconstruct_field(tmp_state, x_grid)
                     result.final_positions = positions.copy()
                     result.runtime_seconds = time.perf_counter() - t_start
                     return result
 
+                # Record regularization diagnostics
+                if reg_diag is not None:
+                    result.n_denominator_below_epsilon.append(reg_diag["n_denom_below_epsilon"])
+                    result.n_clipped_scores.append(reg_diag["n_clipped"])
+                    if k == 0:
+                        result.epsilon_used = reg_diag["epsilon_used"]
+
                 # --- Score error vs oracle on grid (using UNMODIFIED s_est) ---
                 s_oracle_grid = oracle_score(x_grid, t_phys, cfg)
-                u_grid_now = reconstruct_field(tmp_state, x_grid)
                 dx = x_grid[1] - x_grid[0]
-                u_x_grid = np.gradient(u_grid_now, dx)
-                with np.errstate(divide="ignore", invalid="ignore"):
-                    s_est_grid = np.where(u_grid_now != 0.0,
-                                         u_x_grid / u_grid_now, np.nan)
+                if reg_diag is not None:
+                    # Use the regularized score on the grid (what the method actually uses)
+                    u_grid_now = reg_diag["u_grid"]
+                    s_est_grid = reg_diag["s_grid"]
+                else:
+                    u_grid_now = reconstruct_field(tmp_state, x_grid)
+                    u_x_grid = np.gradient(u_grid_now, dx)
+                    with np.errstate(divide="ignore", invalid="ignore"):
+                        s_est_grid = np.where(u_grid_now != 0.0,
+                                             u_x_grid / u_grid_now, np.nan)
 
                 finite_mask = np.isfinite(s_est_grid) & np.isfinite(s_oracle_grid)
                 core_mask = finite_mask & (u_grid_now > 0.05 * np.max(u_grid_now))
@@ -503,4 +527,71 @@ def run_estimated_score_stochastic_raw(
         score_source="estimated",
         oracle_mode="normal",
         estimated_mode=estimated_mode,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Regularized estimated-score methods (Phase 5+)
+# NOTE: The raw methods above are PERMANENTLY unmodified.
+# ---------------------------------------------------------------------------
+
+def run_estimated_score_deterministic_regularized(
+    u_obs: np.ndarray,
+    x_grid: np.ndarray,
+    cfg: Config,
+    rng: np.random.Generator,
+) -> MethodResult:
+    """
+    Regularized probability-flow ODE:
+        X_{k+1} = X_k + alpha * s_reg(X_k, t) * dt
+
+    Score is estimated with regularization as configured in cfg.regularization:
+      - epsilon floor: s = u_x / (u + eps)
+      - score clipping: |s| <= max_abs_score
+    If cfg.regularization.enabled=False, eps=0 (same as raw).
+    """
+    state = field_to_globs(u_obs, x_grid, cfg)
+    return _run_integration(
+        method_name="estimated_score_deterministic_regularized",
+        state=state,
+        x_grid=x_grid,
+        cfg=cfg,
+        rng=rng,
+        use_score=True,
+        use_noise=False,
+        stochastic_coeff=cfg.heat.alpha,
+        score_source="estimated",
+        oracle_mode="normal",
+        estimated_mode="normal",
+        use_regularization=True,
+    )
+
+
+def run_estimated_score_stochastic_regularized(
+    u_obs: np.ndarray,
+    x_grid: np.ndarray,
+    cfg: Config,
+    rng: np.random.Generator,
+) -> MethodResult:
+    """
+    Regularized reverse-time SDE:
+        X_{k+1} = X_k + 2*alpha * s_reg(X_k, t) * dt + sqrt(2*alpha*dt) xi_k
+
+    Score is estimated with regularization as configured in cfg.regularization.
+    If cfg.regularization.enabled=False, eps=0 (same as raw).
+    """
+    state = field_to_globs(u_obs, x_grid, cfg)
+    return _run_integration(
+        method_name="estimated_score_stochastic_regularized",
+        state=state,
+        x_grid=x_grid,
+        cfg=cfg,
+        rng=rng,
+        use_score=True,
+        use_noise=True,
+        stochastic_coeff=2.0 * cfg.heat.alpha,
+        score_source="estimated",
+        oracle_mode="normal",
+        estimated_mode="normal",
+        use_regularization=True,
     )

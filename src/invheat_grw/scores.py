@@ -139,3 +139,114 @@ def estimated_score_raw(
         return scores, False, f"Score magnitude {max_s:.3e} exceeds threshold {threshold:.3e}"
 
     return scores, True, "OK"
+
+
+# ---------------------------------------------------------------------------
+# Estimated score (regularized)
+# ---------------------------------------------------------------------------
+
+def estimated_score_regularized(
+    positions: np.ndarray,
+    state: GlobState,
+    x_grid: np.ndarray,
+    cfg: Config,
+) -> tuple[np.ndarray, bool, str, dict]:
+    """
+    Regularized score estimate.  Uses cfg.regularization to apply:
+      - Epsilon floor: denom = u + epsilon  (epsilon >= 0)
+      - Score clipping: |s| clipped to max_abs_score
+      - (Smoothing stub: not yet implemented)
+
+    If regularization is disabled or all sub-options are off, epsilon=0,
+    making this behave identically to estimated_score_raw.
+
+    INVARIANT: estimated_score_raw is NEVER modified.  This function is
+    always separate.
+
+    Parameters
+    ----------
+    positions : glob positions at which to evaluate the score.
+    state     : current GlobState.
+    x_grid    : spatial grid.
+    cfg       : full Config (reads cfg.regularization).
+
+    Returns
+    -------
+    scores     : regularized score at each glob position.
+    is_stable  : False if NaN/Inf or magnitude > threshold.
+    msg        : diagnostic string.
+    diag       : dict with keys:
+                   epsilon_used           (float)
+                   n_denom_below_epsilon  (int)  -- grid pts where u < eps
+                   n_clipped              (int)  -- grid pts where score clipped
+                   max_abs_before_clip    (float)
+                   max_abs_after          (float)
+                   s_grid                 (np.ndarray) -- regularized score on x_grid
+                   u_grid                 (np.ndarray) -- reconstructed u on x_grid
+    """
+    threshold = cfg.safety.score_abs_fail_threshold
+    reg = cfg.regularization
+
+    # Step 1: reconstruct u on grid
+    u_grid = reconstruct_field(state, x_grid)
+
+    # Step 2: numerical derivative
+    dx = x_grid[1] - x_grid[0]
+    u_x_grid = np.gradient(u_grid, dx)
+
+    # Step 3: compute effective epsilon
+    if reg.enabled and reg.epsilon_floor.enabled:
+        if reg.epsilon_floor.scale_by_peak:
+            peak_u = float(np.max(u_grid))
+            eps = reg.epsilon_floor.value * max(peak_u, 0.0)
+        else:
+            eps = reg.epsilon_floor.value
+    else:
+        eps = 0.0
+
+    # Count denominator values below epsilon (diagnostic)
+    n_below_eps = int(np.sum(u_grid < eps)) if eps > 0.0 else 0
+
+    # Step 4: regularized score on grid
+    denom = u_grid + eps
+    with np.errstate(divide="ignore", invalid="ignore"):
+        s_grid = np.where(denom != 0.0, u_x_grid / denom, np.nan)
+
+    # Step 5: clipping
+    finite_mask = np.isfinite(s_grid)
+    max_abs_before_clip = float(np.max(np.abs(s_grid[finite_mask]))) if np.any(finite_mask) else float("nan")
+    n_clipped = 0
+    if reg.enabled and reg.score_clipping.enabled:
+        max_clip = reg.score_clipping.max_abs_score
+        clip_mask = finite_mask & (np.abs(s_grid) > max_clip)
+        n_clipped = int(np.sum(clip_mask))
+        s_grid = np.clip(s_grid, -max_clip, max_clip)
+
+    max_abs_after = float(np.max(np.abs(s_grid[np.isfinite(s_grid)]))) if np.any(np.isfinite(s_grid)) else float("nan")
+
+    # Step 6: interpolate to positions
+    scores = np.interp(positions, x_grid, s_grid)
+
+    # Step 7: stability check — do NOT silently zero out NaN/Inf
+    has_nan = np.any(~np.isfinite(scores))
+    has_large = (np.any(np.abs(scores[np.isfinite(scores)]) > threshold)
+                 if np.any(np.isfinite(scores)) else False)
+
+    diag = {
+        "epsilon_used": eps,
+        "n_denom_below_epsilon": n_below_eps,
+        "n_clipped": n_clipped,
+        "max_abs_before_clip": max_abs_before_clip,
+        "max_abs_after": max_abs_after,
+        "s_grid": s_grid.copy(),
+        "u_grid": u_grid.copy(),
+    }
+
+    if has_nan:
+        n_nan = int(np.sum(~np.isfinite(scores)))
+        return scores, False, f"NaN/Inf in regularized score ({n_nan} globs)", diag
+    if has_large:
+        max_s = float(np.max(np.abs(scores)))
+        return scores, False, f"Regularized score magnitude {max_s:.3e} exceeds threshold {threshold:.3e}", diag
+
+    return scores, True, "OK", diag
