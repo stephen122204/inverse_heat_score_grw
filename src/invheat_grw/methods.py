@@ -108,6 +108,13 @@ class MethodResult:
     # Values: "position_ratio_raw", "grid_ratio_raw", "grid_ratio_epsilon",
     #         "oracle", "none" (naive), or "" (unset)
     score_estimator_type: str = ""
+    # Density-particle method metadata (populated only for density-particle runs)
+    n_particles: int = 0
+    reconstruction_method: str = ""
+    bandwidth_used: float = float("nan")
+    bandwidth_factor: float = float("nan")
+    step_zero_recon_error: float = float("nan")
+    mass_initial: float = float("nan")
 
 
 # ---------------------------------------------------------------------------
@@ -128,6 +135,94 @@ def _record_snapshot_steps(n_steps: int) -> set:
     """
     mid = n_steps // 2
     return {0, 1, 2, 5, 10, mid, n_steps}
+
+
+def _quantile_init_particles(
+    u_obs: np.ndarray,
+    x_grid: np.ndarray,
+    n_particles: int,
+) -> tuple[np.ndarray, float]:
+    """
+    Initialize density particles from u_obs by deterministic quantile placement.
+
+    Treats u_obs as a non-negative mass distribution.  Places n_particles at
+    the quantile positions (i + 0.5) / n_particles for i = 0..n_particles-1,
+    so the empirical CDF matches u_obs as closely as possible.
+
+    Returns
+    -------
+    positions : (n_particles,) array of initial particle x-coordinates.
+    total_mass : float, integral of u_obs over x_grid.
+    """
+    u_pos = np.maximum(u_obs, 0.0)
+    dx = x_grid[1] - x_grid[0]
+    total_mass = float(np.trapz(u_pos, x_grid))
+    if total_mass <= 0.0:
+        # Fallback: uniform placement
+        positions = np.linspace(x_grid[0], x_grid[-1], n_particles)
+        return positions, 0.0
+
+    # Trapezoidal CDF on x_grid: cdf[0]=0, cdf[-1]=total_mass (before normalizing)
+    segments = 0.5 * (u_pos[:-1] + u_pos[1:]) * dx
+    cdf = np.concatenate([[0.0], np.cumsum(segments)])
+    cdf /= total_mass  # normalize to [0, 1]
+
+    # Deterministic quantile inversion
+    quantiles = (np.arange(n_particles) + 0.5) / n_particles
+    positions = np.interp(quantiles, cdf, x_grid)
+    return positions, total_mass
+
+
+def _reconstruct_density_particles(
+    positions: np.ndarray,
+    total_mass: float,
+    x_grid: np.ndarray,
+    recon_method: str,
+    bandwidth: float,
+) -> np.ndarray:
+    """
+    Reconstruct field u on x_grid from density particle positions.
+
+    The reconstruction preserves total mass (integral = total_mass).
+
+    Parameters
+    ----------
+    positions    : (n_particles,) array of particle x-coordinates.
+    total_mass   : target total mass for the reconstruction.
+    x_grid       : uniform spatial grid.
+    recon_method : "histogram" or "kde".
+    bandwidth    : KDE bandwidth in x-units (ignored for histogram).
+                   If <= 0 for KDE, falls back to Scott's rule.
+
+    Returns
+    -------
+    u_recon : (n_grid,) non-negative array with integral = total_mass.
+    """
+    N = len(positions)
+    n_grid = len(x_grid)
+    dx = x_grid[1] - x_grid[0]
+
+    if recon_method == "histogram":
+        x_min_h = x_grid[0] - 0.5 * dx
+        x_max_h = x_grid[-1] + 0.5 * dx
+        counts, _ = np.histogram(positions, bins=n_grid, range=(x_min_h, x_max_h))
+        u_recon = counts.astype(float) * (total_mass / N) / dx
+        return u_recon
+
+    elif recon_method == "kde":
+        bw = bandwidth
+        if bw <= 0.0:
+            # Scott's rule
+            std_pos = float(np.std(positions))
+            bw = 1.06 * std_pos * N ** (-0.2) if std_pos > 0.0 else dx
+        # Vectorized Gaussian KDE: evaluate at all x_grid points simultaneously
+        diff = x_grid[:, None] - positions[None, :]  # (n_grid, N)
+        kernels = np.exp(-0.5 * (diff / bw) ** 2) / (bw * np.sqrt(2.0 * np.pi))
+        u_recon = np.sum(kernels, axis=1) * (total_mass / N)
+        return u_recon
+
+    else:
+        raise ValueError(f"Unknown recon_method: {recon_method!r}. Use 'histogram' or 'kde'.")
 
 
 # ---------------------------------------------------------------------------
@@ -660,4 +755,178 @@ def run_estimated_score_deterministic_grid_ratio_raw(
         use_regularization=True,   # use the grid-ratio code path (eps=0)
     )
     result.score_estimator_type = "grid_ratio_raw"
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Density-particle oracle method (representation audit)
+# ---------------------------------------------------------------------------
+
+def run_density_particle_oracle_score_deterministic(
+    u_obs: np.ndarray,
+    x_grid: np.ndarray,
+    cfg: Config,
+    n_particles: int,
+    recon_method: str = "kde",
+    bandwidth_factor: float = 2.0,
+) -> MethodResult:
+    """
+    Density-particle probability-flow ODE with oracle score.
+
+    Representation-consistent reverse diffusion: particles carry the density
+    field u directly (not u_x).  The oracle score s = partial_x log u is the
+    exact drift for particles representing u under the reverse-time heat
+    equation.
+
+    The reverse-time probability-flow ODE for density particles is:
+        X_{k+1} = X_k + alpha * s(X_k, t_phys) * dt
+    where s = u_x / u is the field score.  This is equivalent to the
+    backward heat equation in the continuum limit:
+        partial_tau u = -partial_x(u * alpha * u_x/u) = -alpha * u_xx.
+
+    This is DISTINCT from the gradient-glob method, which moves globs
+    carrying u_x with the same field score.  That method is representation-
+    mismatched: the correct continuity equation for u_x-particles would
+    require the gradient score partial_x log(u_x), not the field score.
+
+    Algorithm
+    ---------
+    1. Initialize n_particles from u_obs via deterministic quantile placement.
+    2. Record step-zero reconstruction error (before any movement).
+    3. For k = 0 .. n_steps-1:
+           t_phys = T - k*dt
+           s = oracle_score(positions, t_phys, cfg)   [exact analytic]
+           positions += alpha * s * dt
+           apply reflecting boundary
+    4. Reconstruct u_0 from final positions via histogram or KDE.
+
+    Parameters
+    ----------
+    u_obs           : observed field u(., T) on x_grid.
+    x_grid          : uniform spatial grid.
+    cfg             : experiment config.
+    n_particles     : number of density particles.
+    recon_method    : "histogram" or "kde".
+    bandwidth_factor: KDE bandwidth = bandwidth_factor * dx.
+                      Ignored for histogram.
+
+    Returns
+    -------
+    MethodResult with:
+        method_name             = "density_particle_oracle_deterministic"
+        score_estimator_type    = "density_particle_oracle_field_score"
+        n_particles             = n_particles
+        reconstruction_method   = recon_method
+        bandwidth_used          = actual KDE bandwidth (nan for histogram)
+        bandwidth_factor        = bandwidth_factor argument
+        step_zero_recon_error   = relative L2 of reconstruction at t=T
+        mass_initial            = total mass of u_obs
+        completed, failure_step, failure_msg, runtime_seconds as usual
+    """
+    alpha = cfg.heat.alpha
+    dt = cfg.heat.dt
+    n_steps = cfg.n_steps
+    x_min = float(x_grid[0])
+    x_max = float(x_grid[-1])
+    dx = float(x_grid[1] - x_grid[0])
+    bw = bandwidth_factor * dx
+
+    result = MethodResult(
+        method_name="density_particle_oracle_deterministic",
+        completed=False,
+        failure_step=None,
+        failure_msg="",
+        candidate=np.zeros_like(x_grid),
+    )
+    result.score_estimator_type = "density_particle_oracle_field_score"
+    result.n_particles = n_particles
+    result.reconstruction_method = recon_method
+    result.bandwidth_factor = bandwidth_factor
+    result.bandwidth_used = bw if recon_method == "kde" else float("nan")
+
+    # Step 1: initialize density particles
+    positions, total_mass = _quantile_init_particles(u_obs, x_grid, n_particles)
+    result.mass_initial = total_mass
+
+    # Step-zero reconstruction error (quantifies representation quality at t=T)
+    u_recon_t0 = _reconstruct_density_particles(positions, total_mass, x_grid, recon_method, bw)
+    u_obs_norm = float(np.sqrt(dx * np.sum(u_obs ** 2)))
+    if u_obs_norm > 0.0:
+        step0_diff = u_recon_t0 - u_obs
+        result.step_zero_recon_error = float(np.sqrt(dx * np.sum(step0_diff ** 2))) / u_obs_norm
+    else:
+        result.step_zero_recon_error = float("nan")
+
+    score_fail_thresh = cfg.safety.score_abs_fail_threshold
+    pos_fail_thresh = cfg.safety.value_abs_fail_threshold
+
+    t_start = time.perf_counter()
+
+    # Step 2: backward integration
+    for k in range(n_steps):
+        t_phys = cfg.heat.T - k * dt
+
+        # Oracle score at particle positions (exact analytic formula)
+        scores = oracle_score(positions, t_phys, cfg)
+
+        if not np.all(np.isfinite(scores)):
+            result.failure_step = k
+            result.failure_msg = f"Oracle score NaN/Inf at step {k}"
+            result.candidate = _reconstruct_density_particles(
+                positions, total_mass, x_grid, recon_method, bw)
+            result.final_positions = positions.copy()
+            result.runtime_seconds = time.perf_counter() - t_start
+            return result
+
+        if np.any(np.abs(scores) > score_fail_thresh):
+            result.failure_step = k
+            result.failure_msg = (
+                f"Oracle score magnitude {float(np.max(np.abs(scores))):.3e} "
+                f"> {score_fail_thresh:.3e} at step {k}"
+            )
+            result.candidate = _reconstruct_density_particles(
+                positions, total_mass, x_grid, recon_method, bw)
+            result.final_positions = positions.copy()
+            result.runtime_seconds = time.perf_counter() - t_start
+            return result
+
+        # Record score diagnostics
+        result.score_max_abs.append(float(np.max(np.abs(scores))))
+        result.score_mean.append(float(np.mean(scores)))
+        result.score_std.append(float(np.std(scores)))
+        result.score_L2_error_vs_oracle.append(0.0)   # oracle vs oracle = 0
+
+        # Deterministic probability-flow update
+        positions = positions + alpha * scores * dt
+
+        # Reflecting boundary
+        positions = apply_reflecting_boundary(positions, x_min, x_max)
+
+        # Safety check
+        if not np.all(np.isfinite(positions)):
+            result.failure_step = k + 1
+            result.failure_msg = f"NaN/Inf in particle positions at step {k + 1}"
+            result.candidate = _reconstruct_density_particles(
+                positions, total_mass, x_grid, recon_method, bw)
+            result.final_positions = positions.copy()
+            result.runtime_seconds = time.perf_counter() - t_start
+            return result
+
+        if np.any(np.abs(positions) > pos_fail_thresh):
+            result.failure_step = k + 1
+            result.failure_msg = (
+                f"Particle position magnitude > {pos_fail_thresh:.3e} at step {k + 1}"
+            )
+            result.candidate = _reconstruct_density_particles(
+                positions, total_mass, x_grid, recon_method, bw)
+            result.final_positions = positions.copy()
+            result.runtime_seconds = time.perf_counter() - t_start
+            return result
+
+    # All steps completed successfully
+    result.completed = True
+    result.candidate = _reconstruct_density_particles(
+        positions, total_mass, x_grid, recon_method, bw)
+    result.final_positions = positions.copy()
+    result.runtime_seconds = time.perf_counter() - t_start
     return result
