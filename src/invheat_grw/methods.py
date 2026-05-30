@@ -115,6 +115,10 @@ class MethodResult:
     bandwidth_factor: float = float("nan")
     step_zero_recon_error: float = float("nan")
     mass_initial: float = float("nan")
+    # Per-step diagnostics for density-particle estimated methods
+    mean_abs_score: list = field(default_factory=list)          # mean |score| at particle positions
+    mass_per_step: list = field(default_factory=list)           # reconstructed mass per step
+    epsilon_actual_per_step: list = field(default_factory=list) # actual epsilon per step (varies if scale_by_peak)
 
 
 # ---------------------------------------------------------------------------
@@ -922,6 +926,284 @@ def run_density_particle_oracle_score_deterministic(
             result.final_positions = positions.copy()
             result.runtime_seconds = time.perf_counter() - t_start
             return result
+
+    # All steps completed successfully
+    result.completed = True
+    result.candidate = _reconstruct_density_particles(
+        positions, total_mass, x_grid, recon_method, bw)
+    result.final_positions = positions.copy()
+    result.runtime_seconds = time.perf_counter() - t_start
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Density-particle estimated-score method
+# ---------------------------------------------------------------------------
+
+def run_density_particle_estimated_score_deterministic(
+    u_obs: np.ndarray,
+    x_grid: np.ndarray,
+    cfg: Config,
+    n_particles: int,
+    rng=None,
+    recon_method: str = "kde",
+    bandwidth: "float | None" = None,
+    bandwidth_factor: float = 2.0,
+    epsilon: float = 0.0,
+    scale_epsilon_by_peak: bool = False,
+    score_clipping: "float | None" = None,
+    save_snapshots: bool = True,
+) -> MethodResult:
+    """
+    Density-particle probability-flow ODE with estimated score.
+
+    Like run_density_particle_oracle_score_deterministic, but computes the
+    score from the current reconstructed density rather than the exact oracle
+    formula.  The score is estimated via the grid-ratio path:
+
+        reconstruct u on grid
+        u_x = gradient(u)
+        s_grid = u_x / (u + epsilon_actual)     [grid-ratio path]
+        interpolate s_grid to particle positions
+
+    NaN/Inf scores are NEVER silently replaced with zero.  Any step that
+    produces a non-finite or too-large interpolated score at any particle
+    position immediately halts integration and records failure_step and
+    failure_msg.
+
+    Parameters
+    ----------
+    u_obs              : observed field u(., T) on x_grid.
+    x_grid             : uniform spatial grid.
+    cfg                : experiment config.
+    n_particles        : number of density particles.
+    rng                : random generator (unused; accepted for API symmetry).
+    recon_method       : "histogram" or "kde".
+    bandwidth          : explicit KDE bandwidth in x-units.  If None,
+                         bandwidth = bandwidth_factor * dx.
+    bandwidth_factor   : KDE bandwidth as a multiple of dx.  Used only when
+                         bandwidth is None.
+    epsilon            : denominator regularization floor.  If 0.0, raw
+                         score s = u_x / u (may fail if u = 0 at grid pts).
+    scale_epsilon_by_peak : if True, epsilon_actual = epsilon * max(u_recon)
+                            at each step.  Adapts to the current field scale.
+    score_clipping     : if not None, clip |s| to score_clipping on the grid
+                         before interpolation.
+    save_snapshots     : if True, save field snapshots at key steps.
+
+    Returns
+    -------
+    MethodResult with:
+        method_name  = "density_particle_estimated_raw"      (epsilon=0)
+                       "density_particle_estimated_eps=XeY" (epsilon>0)
+        score_estimator_type
+             = "density_particle_estimated_grid_ratio_raw"
+               "density_particle_estimated_grid_ratio_epsilon"
+        n_particles, reconstruction_method, bandwidth_used, bandwidth_factor,
+        step_zero_recon_error, mass_initial    (same as oracle version)
+        epsilon_used                : base epsilon value (pre-scaling)
+        epsilon_actual_per_step     : per-step actual epsilon (varies if scale_by_peak)
+        n_denominator_below_epsilon : per-step count of grid pts where u < eps_actual
+        n_clipped_scores            : per-step count of clipped score grid pts
+        mass_per_step               : per-step integral of reconstructed density
+        mean_abs_score              : per-step mean |score| at particle positions
+        score_L2_error_vs_oracle, score_Linf_error_vs_oracle,
+        score_core_L2_error_vs_oracle, score_core_Linf_error_vs_oracle : per-step
+        completed, failure_step, failure_msg, runtime_seconds
+    """
+    alpha = cfg.heat.alpha
+    dt = cfg.heat.dt
+    n_steps = cfg.n_steps
+    x_min = float(x_grid[0])
+    x_max = float(x_grid[-1])
+    dx = float(x_grid[1] - x_grid[0])
+
+    # Determine KDE bandwidth
+    bw = float(bandwidth) if bandwidth is not None else bandwidth_factor * dx
+
+    # Method naming encodes epsilon for CSV readability
+    if epsilon == 0.0 and not scale_epsilon_by_peak:
+        method_name = "density_particle_estimated_raw"
+        score_est_type = "density_particle_estimated_grid_ratio_raw"
+    else:
+        method_name = f"density_particle_estimated_eps={epsilon:.0e}"
+        score_est_type = "density_particle_estimated_grid_ratio_epsilon"
+
+    result = MethodResult(
+        method_name=method_name,
+        completed=False,
+        failure_step=None,
+        failure_msg="",
+        candidate=np.zeros_like(x_grid),
+    )
+    result.score_estimator_type = score_est_type
+    result.n_particles = n_particles
+    result.reconstruction_method = recon_method
+    result.bandwidth_factor = bandwidth_factor
+    result.bandwidth_used = bw if recon_method == "kde" else float("nan")
+    result.epsilon_used = epsilon  # base epsilon before scale_by_peak
+
+    # Initialize density particles from u_obs
+    positions, total_mass = _quantile_init_particles(u_obs, x_grid, n_particles)
+    result.mass_initial = total_mass
+
+    # Step-zero reconstruction error (quantifies KDE/histogram fit at t=T)
+    u_recon_t0 = _reconstruct_density_particles(positions, total_mass, x_grid, recon_method, bw)
+    u_obs_norm = float(np.sqrt(dx * np.sum(u_obs ** 2)))
+    if u_obs_norm > 0.0:
+        step0_diff = u_recon_t0 - u_obs
+        result.step_zero_recon_error = float(np.sqrt(dx * np.sum(step0_diff ** 2))) / u_obs_norm
+    else:
+        result.step_zero_recon_error = float("nan")
+
+    score_fail_thresh = cfg.safety.score_abs_fail_threshold
+    pos_fail_thresh = cfg.safety.value_abs_fail_threshold
+    snapshot_steps = _record_snapshot_steps(n_steps)
+
+    t_start = time.perf_counter()
+
+    for k in range(n_steps):
+        t_phys = cfg.heat.T - k * dt
+
+        # --- Reconstruct density on grid from current particle positions ---
+        u_recon = _reconstruct_density_particles(positions, total_mass, x_grid, recon_method, bw)
+
+        # --- Numerical derivative u_x (central differences via np.gradient) ---
+        u_x = np.gradient(u_recon, dx)
+
+        # --- Compute effective epsilon for this step ---
+        if scale_epsilon_by_peak:
+            peak_u = float(np.max(u_recon)) if np.any(u_recon > 0.0) else 0.0
+            epsilon_actual = epsilon * max(peak_u, 0.0)
+        else:
+            epsilon_actual = epsilon
+        result.epsilon_actual_per_step.append(epsilon_actual)
+
+        # --- Per-step mass tracking ---
+        mass_recon = float(np.trapz(u_recon, x_grid))
+        result.mass_per_step.append(mass_recon)
+
+        # --- Denominator diagnostic: count grid pts where u < epsilon_actual ---
+        if epsilon_actual > 0.0:
+            n_below_eps = int(np.sum(u_recon < epsilon_actual))
+        else:
+            n_below_eps = int(np.sum(u_recon <= 0.0))
+        result.n_denominator_below_epsilon.append(n_below_eps)
+
+        # --- Estimated score on grid: s = u_x / (u + epsilon_actual) ---
+        denom = u_recon + epsilon_actual
+        with np.errstate(divide="ignore", invalid="ignore"):
+            s_grid = np.where(denom > 0.0, u_x / denom, np.nan)
+
+        # --- Optional score clipping on grid ---
+        n_clipped = 0
+        if score_clipping is not None and score_clipping > 0.0:
+            finite_mask = np.isfinite(s_grid)
+            clip_mask = finite_mask & (np.abs(s_grid) > score_clipping)
+            n_clipped = int(np.sum(clip_mask))
+            s_grid = np.where(finite_mask,
+                              np.clip(s_grid, -score_clipping, score_clipping),
+                              s_grid)
+        result.n_clipped_scores.append(n_clipped)
+
+        # --- Compare estimated score vs oracle on grid ---
+        s_oracle_grid = oracle_score(x_grid, t_phys, cfg)
+        finite_mask = np.isfinite(s_grid) & np.isfinite(s_oracle_grid)
+        peak_u_for_core = float(np.max(u_recon)) if np.any(u_recon > 0.0) else 1.0
+        core_mask = finite_mask & (u_recon > 0.05 * peak_u_for_core)
+
+        if np.any(finite_mask):
+            err_all = s_grid[finite_mask] - s_oracle_grid[finite_mask]
+            s_L2 = float(np.sqrt(dx * np.sum(err_all ** 2)))
+            s_Linf = float(np.max(np.abs(err_all)))
+        else:
+            s_L2 = float("nan")
+            s_Linf = float("nan")
+
+        if np.any(core_mask):
+            err_core = s_grid[core_mask] - s_oracle_grid[core_mask]
+            s_core_L2 = float(np.sqrt(dx * np.sum(err_core ** 2)))
+            s_core_Linf = float(np.max(np.abs(err_core)))
+        else:
+            s_core_L2 = float("nan")
+            s_core_Linf = float("nan")
+
+        result.score_L2_error_vs_oracle.append(s_L2)
+        result.score_Linf_error_vs_oracle.append(s_Linf)
+        result.score_core_L2_error_vs_oracle.append(s_core_L2)
+        result.score_core_Linf_error_vs_oracle.append(s_core_Linf)
+
+        # --- Interpolate score from grid to particle positions ---
+        # np.interp propagates NaN from s_grid to particles in NaN-covered regions
+        scores = np.interp(positions, x_grid, s_grid)
+
+        # --- Safety: NaN/Inf in interpolated scores — do NOT zero them out ---
+        if not np.all(np.isfinite(scores)):
+            n_bad = int(np.sum(~np.isfinite(scores)))
+            result.failure_step = k
+            result.failure_msg = (
+                f"NaN/Inf in estimated score at step {k} "
+                f"({n_bad}/{n_particles} particles); "
+                f"epsilon_actual={epsilon_actual:.2e}, "
+                f"n_denom_zero={n_below_eps}"
+            )
+            result.candidate = _reconstruct_density_particles(
+                positions, total_mass, x_grid, recon_method, bw)
+            result.final_positions = positions.copy()
+            result.runtime_seconds = time.perf_counter() - t_start
+            return result
+
+        if np.any(np.abs(scores) > score_fail_thresh):
+            max_s = float(np.max(np.abs(scores)))
+            result.failure_step = k
+            result.failure_msg = (
+                f"Score magnitude {max_s:.3e} > {score_fail_thresh:.3e} at step {k}; "
+                f"epsilon_actual={epsilon_actual:.2e}"
+            )
+            result.candidate = _reconstruct_density_particles(
+                positions, total_mass, x_grid, recon_method, bw)
+            result.final_positions = positions.copy()
+            result.runtime_seconds = time.perf_counter() - t_start
+            return result
+
+        # --- Record score diagnostics ---
+        result.score_max_abs.append(float(np.max(np.abs(scores))))
+        result.score_mean.append(float(np.mean(scores)))
+        result.mean_abs_score.append(float(np.mean(np.abs(scores))))
+        result.score_std.append(float(np.std(scores)))
+
+        # --- Deterministic probability-flow update ---
+        positions = positions + alpha * scores * dt
+
+        # --- Reflecting boundary ---
+        positions = apply_reflecting_boundary(positions, x_min, x_max)
+
+        # --- Position safety ---
+        if not np.all(np.isfinite(positions)):
+            result.failure_step = k + 1
+            result.failure_msg = f"NaN/Inf in particle positions at step {k + 1}"
+            result.candidate = _reconstruct_density_particles(
+                positions, total_mass, x_grid, recon_method, bw)
+            result.final_positions = positions.copy()
+            result.runtime_seconds = time.perf_counter() - t_start
+            return result
+
+        if np.any(np.abs(positions) > pos_fail_thresh):
+            result.failure_step = k + 1
+            result.failure_msg = (
+                f"Particle position magnitude > {pos_fail_thresh:.3e} at step {k + 1}"
+            )
+            result.candidate = _reconstruct_density_particles(
+                positions, total_mass, x_grid, recon_method, bw)
+            result.final_positions = positions.copy()
+            result.runtime_seconds = time.perf_counter() - t_start
+            return result
+
+        # --- Optional field snapshot at key steps ---
+        if save_snapshots and (k + 1) in snapshot_steps:
+            snap = _reconstruct_density_particles(
+                positions, total_mass, x_grid, recon_method, bw)
+            result.step_snapshots[k + 1] = snap.copy()
 
     # All steps completed successfully
     result.completed = True
