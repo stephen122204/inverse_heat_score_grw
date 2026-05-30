@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.DS_Store
+*.npz
+outputs/*/
+!outputs/.gitkeep
+.env
+*.egg-info/
+dist/
+build/

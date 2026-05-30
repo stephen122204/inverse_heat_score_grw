@@ -1,0 +1,31 @@
+domain:
+  x_min: 0.0
+  x_max: 1.0
+  n_grid: 200
+
+heat:
+  alpha: 0.01
+  T: 0.01
+  dt: 0.001
+
+initial_condition:
+  type: gaussian
+  mu: 0.4
+  sigma0: 0.08
+  amplitude: 1.0
+
+grw:
+  gradient_globs_per_jump: 20
+  rng_seed: 0
+  boundary: reflecting
+
+experiments:
+  run_naive_backward: true
+  run_oracle_score_deterministic: true
+  run_oracle_score_stochastic: true
+  run_estimated_score_deterministic_raw: true
+  run_estimated_score_stochastic_raw: true
+
+safety:
+  score_abs_fail_threshold: 1.0e6
+  value_abs_fail_threshold: 1.0e6
