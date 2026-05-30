@@ -260,23 +260,25 @@ def compute_metrics(
     mass_err = mass_cand - mass_true_val
     mass_rel_err = mass_err / mass_true_val if mass_true_val > 0 else float("nan")
 
-    # Score diagnostics
+    # Score diagnostics (optional fields — not present on TikhonovResult / SpectralResult)
+    _score_max_abs = getattr(result, "score_max_abs", [])
     max_abs_score_final = (
-        result.score_max_abs[-1]
-        if result.score_max_abs and np.isfinite(result.score_max_abs[-1])
+        _score_max_abs[-1]
+        if _score_max_abs and np.isfinite(_score_max_abs[-1])
         else float("nan")
     )
-    if result.score_L2_error_vs_oracle:
-        finite_errs = [v for v in result.score_L2_error_vs_oracle if np.isfinite(v)]
+    _score_l2_errs = getattr(result, "score_L2_error_vs_oracle", [])
+    if _score_l2_errs:
+        finite_errs = [v for v in _score_l2_errs if np.isfinite(v)]
         max_score_err_L2 = float(max(finite_errs)) if finite_errs else float("nan")
     else:
         max_score_err_L2 = float("nan")
 
     return MethodMetrics(
-        method_name=result.method_name,
+        method_name=getattr(result, "method_name", ""),
         completed=result.completed,
-        failure_step=result.failure_step,
-        failure_msg=result.failure_msg,
+        failure_step=getattr(result, "failure_step", None),
+        failure_msg=getattr(result, "failure_msg", ""),
         l2_error=l2_err,
         relative_l2=rel_l2,
         linf_error=linf_err,
@@ -299,7 +301,7 @@ def compute_metrics(
         mass_rel_error=mass_rel_err,
         max_abs_score_final=max_abs_score_final,
         max_score_error_L2=max_score_err_L2,
-        runtime_seconds=result.runtime_seconds,
+        runtime_seconds=getattr(result, "runtime_seconds", float("nan")),
         # Regularization diagnostics (from MethodResult extended fields)
         epsilon_value=getattr(result, "epsilon_used", float("nan")),
         n_denom_below_eps_total=int(sum(getattr(result, "n_denominator_below_epsilon", []))),

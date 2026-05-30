@@ -240,8 +240,8 @@ def _base_row(test: str, n_grid: int, method_name: str, method_type: str) -> dic
 def _fill_metrics(row: dict, result, m, wass: float) -> dict:
     row.update({
         "completed": result.completed,
-        "failure_step": result.failure_step if result.failure_step is not None else "",
-        "failure_msg": result.failure_msg or "",
+        "failure_step": (getattr(result, "failure_step", None) or ""),
+        "failure_msg": (getattr(result, "failure_msg", "") or ""),
         "step_zero_recon_error": _safe(getattr(result, "step_zero_recon_error", float("nan"))),
         "relative_l2": _safe(m.relative_l2),
         "l2_error": _safe(m.l2_error),
@@ -441,6 +441,7 @@ def run_tikhonov_best_cell(test: str, cfg: Config, n_grid: int) -> dict:
             self.completed = True
             self.failure_step = None
             self.failure_msg = ""
+            self.method_name = f"tikhonov_lam={best_lam:.0e}"
             self.candidate = cand
             self.runtime_seconds = float("nan")
             self.step_zero_recon_error = float("nan")
