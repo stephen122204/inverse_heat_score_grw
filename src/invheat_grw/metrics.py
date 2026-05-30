@@ -202,6 +202,10 @@ class MethodMetrics:
     particle_rel_L2_over_spectral: float = float("nan")
     # Method category: "particle", "baseline_spectral", "baseline_tikhonov"
     method_category: str = "particle"
+    # Score estimator type label for CSV output
+    # Values: "position_ratio_raw", "grid_ratio_raw", "grid_ratio_epsilon",
+    #         "oracle", "none" (naive), or "" (unset / baseline)
+    score_estimator_type: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -300,6 +304,7 @@ def compute_metrics(
         epsilon_value=getattr(result, "epsilon_used", float("nan")),
         n_denom_below_eps_total=int(sum(getattr(result, "n_denominator_below_epsilon", []))),
         n_clipped_total=int(sum(getattr(result, "n_clipped_scores", []))),
+        score_estimator_type=getattr(result, "score_estimator_type", ""),
     )
 
 
@@ -325,9 +330,12 @@ def compute_wasserstein(
 
     c = np.maximum(candidate, 0.0)
     t = np.maximum(true_u0, 0.0)
+    # Guard against overflow (large k_cut_mult can blow up spectral reconstructions)
+    if not (np.all(np.isfinite(c)) and np.all(np.isfinite(t))):
+        return float("nan")
     mc = float(np.trapz(c, x_grid))
     mt = float(np.trapz(t, x_grid))
-    if mc <= 0.0 or mt <= 0.0:
+    if not (np.isfinite(mc) and mc > 0.0 and np.isfinite(mt) and mt > 0.0):
         return float("nan")
     c_norm = c / mc
     t_norm = t / mt

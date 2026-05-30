@@ -157,8 +157,14 @@ def estimated_score_regularized(
       - Score clipping: |s| clipped to max_abs_score
       - (Smoothing stub: not yet implemented)
 
-    If regularization is disabled or all sub-options are off, epsilon=0,
-    making this behave identically to estimated_score_raw.
+    At epsilon=0 and clipping disabled, this score estimator is still NOT
+    equivalent to estimated_score_raw.  This function computes the score
+    on the reconstruction grid as u_x / (u + epsilon) and then interpolates
+    the score to particle positions (divide-then-interp, grid-ratio path).
+    estimated_score_raw interpolates u and u_x separately to particle
+    positions and then divides (interp-then-divide, position-ratio path).
+    Division and interpolation do not commute, so the two paths are
+    distinct discretizations even when epsilon=0.
 
     INVARIANT: estimated_score_raw is NEVER modified.  This function is
     always separate.

@@ -104,6 +104,10 @@ class MethodResult:
     n_denominator_below_epsilon: list = field(default_factory=list)  # per step
     n_clipped_scores: list = field(default_factory=list)             # per step
     epsilon_used: float = 0.0  # effective epsilon (0 = raw/unregularized)
+    # Score estimator type label for CSV output
+    # Values: "position_ratio_raw", "grid_ratio_raw", "grid_ratio_epsilon",
+    #         "oracle", "none" (naive), or "" (unset)
+    score_estimator_type: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -394,7 +398,7 @@ def run_naive_backward(
     Expected to fail at recovering the initial peak.
     """
     state = field_to_globs(u_obs, x_grid, cfg)
-    return _run_integration(
+    result = _run_integration(
         method_name="naive_backward",
         state=state,
         x_grid=x_grid,
@@ -405,6 +409,8 @@ def run_naive_backward(
         stochastic_coeff=0.0,   # no drift
         score_source="oracle",  # unused
     )
+    result.score_estimator_type = "none"
+    return result
 
 
 def run_oracle_score_deterministic(
@@ -422,7 +428,7 @@ def run_oracle_score_deterministic(
     Expected to concentrate particles toward the Gaussian peak.
     """
     state = field_to_globs(u_obs, x_grid, cfg)
-    return _run_integration(
+    result = _run_integration(
         method_name="oracle_score_deterministic",
         state=state,
         x_grid=x_grid,
@@ -435,6 +441,8 @@ def run_oracle_score_deterministic(
         oracle_mode=oracle_mode,
         estimated_mode="normal",
     )
+    result.score_estimator_type = "oracle"
+    return result
 
 
 def run_oracle_score_stochastic(
@@ -453,7 +461,7 @@ def run_oracle_score_stochastic(
     Expected to show similar recovery as deterministic but with noise.
     """
     state = field_to_globs(u_obs, x_grid, cfg)
-    return _run_integration(
+    result = _run_integration(
         method_name="oracle_score_stochastic",
         state=state,
         x_grid=x_grid,
@@ -466,6 +474,8 @@ def run_oracle_score_stochastic(
         oracle_mode=oracle_mode,
         estimated_mode="normal",
     )
+    result.score_estimator_type = "oracle"
+    return result
 
 
 def run_estimated_score_deterministic_raw(
@@ -485,7 +495,7 @@ def run_estimated_score_deterministic_raw(
     for regularization.
     """
     state = field_to_globs(u_obs, x_grid, cfg)
-    return _run_integration(
+    result = _run_integration(
         method_name="estimated_score_deterministic_raw",
         state=state,
         x_grid=x_grid,
@@ -498,6 +508,8 @@ def run_estimated_score_deterministic_raw(
         oracle_mode="normal",
         estimated_mode=estimated_mode,
     )
+    result.score_estimator_type = "position_ratio_raw"
+    return result
 
 
 def run_estimated_score_stochastic_raw(
@@ -515,7 +527,7 @@ def run_estimated_score_stochastic_raw(
     No regularization.  May blow up.
     """
     state = field_to_globs(u_obs, x_grid, cfg)
-    return _run_integration(
+    result = _run_integration(
         method_name="estimated_score_stochastic_raw",
         state=state,
         x_grid=x_grid,
@@ -528,6 +540,8 @@ def run_estimated_score_stochastic_raw(
         oracle_mode="normal",
         estimated_mode=estimated_mode,
     )
+    result.score_estimator_type = "position_ratio_raw"
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -551,7 +565,7 @@ def run_estimated_score_deterministic_regularized(
     If cfg.regularization.enabled=False, eps=0 (same as raw).
     """
     state = field_to_globs(u_obs, x_grid, cfg)
-    return _run_integration(
+    result = _run_integration(
         method_name="estimated_score_deterministic_regularized",
         state=state,
         x_grid=x_grid,
@@ -565,6 +579,8 @@ def run_estimated_score_deterministic_regularized(
         estimated_mode="normal",
         use_regularization=True,
     )
+    result.score_estimator_type = "grid_ratio_epsilon"
+    return result
 
 
 def run_estimated_score_stochastic_regularized(
@@ -581,7 +597,7 @@ def run_estimated_score_stochastic_regularized(
     If cfg.regularization.enabled=False, eps=0 (same as raw).
     """
     state = field_to_globs(u_obs, x_grid, cfg)
-    return _run_integration(
+    result = _run_integration(
         method_name="estimated_score_stochastic_regularized",
         state=state,
         x_grid=x_grid,
@@ -595,3 +611,53 @@ def run_estimated_score_stochastic_regularized(
         estimated_mode="normal",
         use_regularization=True,
     )
+    result.score_estimator_type = "grid_ratio_epsilon"
+    return result
+
+
+def run_estimated_score_deterministic_grid_ratio_raw(
+    u_obs: np.ndarray,
+    x_grid: np.ndarray,
+    cfg: Config,
+    rng: np.random.Generator,
+) -> MethodResult:
+    """
+    Grid-ratio probability-flow ODE (no epsilon, no clipping):
+        X_{k+1} = X_k + alpha * s_gr(X_k, t) * dt
+
+    Score is estimated on the grid as u_x / u (divide-then-interp, grid-ratio
+    path), with epsilon=0 and clipping disabled.
+
+    This is a DISTINCT discretization from estimated_score_deterministic_raw.
+    That method uses interp-then-divide (position-ratio path).  Division and
+    interpolation do not commute, so the two paths give numerically different
+    results even though both nominally compute u_x / u.
+
+    This wrapper makes the grid-ratio path accessible under an unambiguous
+    name for convergence studies and CSV labeling.  It calls the same
+    estimated_score_regularized code path with epsilon=0 and clipping off
+    (a deepcopy of cfg is used so the caller's cfg is not modified).
+    """
+    import copy
+    cfg_gr = copy.deepcopy(cfg)
+    cfg_gr.regularization.enabled = False
+    cfg_gr.regularization.epsilon_floor.enabled = False
+    cfg_gr.regularization.score_clipping.enabled = False
+
+    state = field_to_globs(u_obs, x_grid, cfg_gr)
+    result = _run_integration(
+        method_name="estimated_score_deterministic_grid_ratio_raw",
+        state=state,
+        x_grid=x_grid,
+        cfg=cfg_gr,
+        rng=rng,
+        use_score=True,
+        use_noise=False,
+        stochastic_coeff=cfg_gr.heat.alpha,
+        score_source="estimated",
+        oracle_mode="normal",
+        estimated_mode="normal",
+        use_regularization=True,   # use the grid-ratio code path (eps=0)
+    )
+    result.score_estimator_type = "grid_ratio_raw"
+    return result
