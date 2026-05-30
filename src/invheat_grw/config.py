@@ -11,7 +11,15 @@ from __future__ import annotations
 import yaml
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List, Optional
+
+
+@dataclass
+class GaussianComponentConfig:
+    """One component of a Gaussian mixture initial condition."""
+    amplitude: float
+    mu: float
+    sigma0: float
 
 
 @dataclass
@@ -30,10 +38,14 @@ class HeatConfig:
 
 @dataclass
 class InitialConditionConfig:
-    type: str       # currently only "gaussian" supported
-    mu: float
-    sigma0: float
-    amplitude: float
+    type: str       # "gaussian" or "gaussian_mixture"
+    # Single-Gaussian fields (used when type == "gaussian")
+    mu: float = 0.5
+    sigma0: float = 0.08
+    amplitude: float = 1.0
+    # Mixture fields (used when type == "gaussian_mixture")
+    background: float = 0.0
+    components: List[GaussianComponentConfig] = field(default_factory=list)
 
 
 @dataclass
@@ -86,6 +98,31 @@ def load_config(path: str | Path) -> Config:
     e = raw["experiments"]
     s = raw["safety"]
 
+    ic_type = str(ic["type"])
+    if ic_type == "gaussian":
+        ic_cfg = InitialConditionConfig(
+            type="gaussian",
+            mu=float(ic["mu"]),
+            sigma0=float(ic["sigma0"]),
+            amplitude=float(ic["amplitude"]),
+        )
+    elif ic_type == "gaussian_mixture":
+        components = [
+            GaussianComponentConfig(
+                amplitude=float(c["amplitude"]),
+                mu=float(c["mu"]),
+                sigma0=float(c["sigma0"]),
+            )
+            for c in ic["components"]
+        ]
+        ic_cfg = InitialConditionConfig(
+            type="gaussian_mixture",
+            background=float(ic.get("background", 0.0)),
+            components=components,
+        )
+    else:
+        raise ValueError(f"Unknown initial_condition type: {ic_type!r}")
+
     return Config(
         domain=DomainConfig(
             x_min=float(d["x_min"]),
@@ -97,12 +134,7 @@ def load_config(path: str | Path) -> Config:
             T=float(h["T"]),
             dt=float(h["dt"]),
         ),
-        initial_condition=InitialConditionConfig(
-            type=str(ic["type"]),
-            mu=float(ic["mu"]),
-            sigma0=float(ic["sigma0"]),
-            amplitude=float(ic["amplitude"]),
-        ),
+        initial_condition=ic_cfg,
         grw=GRWConfig(
             gradient_globs_per_jump=int(g["gradient_globs_per_jump"]),
             rng_seed=int(g["rng_seed"]),

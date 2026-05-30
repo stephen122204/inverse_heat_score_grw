@@ -426,3 +426,82 @@ def plot_residuals(
     fig.suptitle("Residuals: true_u₀ − candidate", fontsize=11)
     fig.tight_layout()
     return _save(fig, out_dir / "residuals.png")
+
+
+# ---------------------------------------------------------------------------
+# 11. score_error_by_step (estimated methods only)
+# ---------------------------------------------------------------------------
+
+def plot_score_error_by_step(
+    results: Dict[str, MethodResult],
+    out_dir: Path,
+    filename: str = "score_error_by_step.png",
+) -> Path:
+    """Plot L2 error of estimated score vs oracle score at each backward step."""
+    EST_METHODS = {"estimated_score_deterministic_raw", "estimated_score_stochastic_raw"}
+    fig, ax = plt.subplots(figsize=(10, 5))
+    any_data = False
+    for name, res in results.items():
+        if name not in EST_METHODS:
+            continue
+        errs = res.score_L2_error_vs_oracle
+        if not errs:
+            continue
+        finite_mask = np.isfinite(errs)
+        steps = np.arange(len(errs))
+        ax.semilogy(steps[finite_mask], np.array(errs)[finite_mask],
+                    color=_method_color(name), label=_method_label(name), lw=1.5)
+        if res.failure_step is not None:
+            ax.axvline(res.failure_step, color=_method_color(name), ls=":", lw=1.2, alpha=0.7)
+        any_data = True
+    if not any_data:
+        ax.text(0.5, 0.5, "No score error data available", ha="center", transform=ax.transAxes)
+    ax.set_xlabel("Backward step k")
+    ax.set_ylabel("L2 score error vs oracle")
+    ax.set_title("Estimated score error vs oracle (per step)")
+    ax.legend(fontsize=9)
+    ax.grid(True, alpha=0.3)
+    return _save(fig, out_dir / filename)
+
+
+# ---------------------------------------------------------------------------
+# 12. score_overlay — s_est vs s_oracle at key steps
+# ---------------------------------------------------------------------------
+
+def plot_score_overlay(
+    result: MethodResult,
+    out_dir: Path,
+    filename: str = "score_overlay.png",
+) -> Path:
+    """Plot estimated score vs oracle score at step 0, midpoint, and final."""
+    snaps = result.score_overlay_snapshots
+    if not snaps:
+        fig, ax = plt.subplots()
+        ax.text(0.5, 0.5, "No score overlay data", ha="center", transform=ax.transAxes)
+        return _save(fig, out_dir / filename)
+
+    sorted_steps = sorted(snaps.keys())
+    ncols = min(len(sorted_steps), 3)
+    nrows = (len(sorted_steps) + ncols - 1) // ncols
+    fig, axes = plt.subplots(nrows, ncols, figsize=(5 * ncols, 4 * nrows), squeeze=False)
+    axes_flat = [ax for row in axes for ax in row]
+
+    for i, step in enumerate(sorted_steps):
+        ax = axes_flat[i]
+        x_grid, s_est, s_oracle = snaps[step]
+        ax.plot(x_grid, s_oracle, "k-", lw=2, label="Oracle score")
+        ax.plot(x_grid, s_est, color=_method_color(result.method_name),
+                lw=1.5, ls="--", label="Est. score (raw)")
+        ax.set_title(f"Step {step}")
+        ax.set_xlabel("x")
+        ax.set_ylabel("score")
+        ax.legend(fontsize=8)
+        ax.grid(True, alpha=0.3)
+
+    for j in range(len(sorted_steps), len(axes_flat)):
+        axes_flat[j].set_visible(False)
+
+    method_label = _method_label(result.method_name)
+    fig.suptitle(f"Score overlay — {method_label}", fontsize=11)
+    fig.tight_layout()
+    return _save(fig, out_dir / filename)

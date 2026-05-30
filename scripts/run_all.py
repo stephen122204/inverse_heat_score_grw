@@ -137,7 +137,7 @@ def main() -> None:
         metrics_list.append(m)
 
     # Reference metrics for true_u0 and observed_final
-    from invheat_grw.metrics import compute_fwhm, forward_heat_solve_dct
+    from invheat_grw.metrics import forward_heat_solve_dct
     true_peak = float(np.max(u0))
     true_peak_loc = float(x[np.argmax(u0)])
     true_fwhm = compute_fwhm(u0, x)
@@ -147,13 +147,29 @@ def main() -> None:
     obs_tv = float(np.sum(np.abs(np.diff(u_obs))))
 
     # Wrap reference values as pseudo-MethodMetrics for summary text
-    from dataclasses import dataclass
     from invheat_grw.metrics import MethodMetrics as MM
 
-    true_metrics = MM("true_u0", True, None, "", 0.0,
-                       true_peak, true_peak_loc, true_fwhm, true_tv, 0.0)
-    obs_metrics = MM("observed_final", True, None, "", 0.0,
-                     obs_peak, true_peak_loc, obs_fwhm, obs_tv, 0.0)
+    nan = float("nan")
+    true_metrics = MM(
+        method_name="true_u0", completed=True, failure_step=None, failure_msg="",
+        l2_error=0.0, relative_l2=0.0, linf_error=0.0,
+        peak_value=true_peak, peak_ratio=1.0, peak_location=true_peak_loc,
+        peak_width_fwhm=true_fwhm, sigma_moment=nan, width_moment=nan,
+        A_fit=nan, mu_fit=nan, sigma_fit=nan, fit_success=False, fit_rmse=nan,
+        total_variation=true_tv, forward_consistency_l2=0.0,
+        mass_candidate=nan, mass_true=nan, mass_error=0.0, mass_rel_error=0.0,
+        max_abs_score_final=nan, max_score_error_L2=nan, runtime_seconds=0.0,
+    )
+    obs_metrics = MM(
+        method_name="observed_final", completed=True, failure_step=None, failure_msg="",
+        l2_error=nan, relative_l2=nan, linf_error=nan,
+        peak_value=obs_peak, peak_ratio=nan, peak_location=true_peak_loc,
+        peak_width_fwhm=obs_fwhm, sigma_moment=nan, width_moment=nan,
+        A_fit=nan, mu_fit=nan, sigma_fit=nan, fit_success=False, fit_rmse=nan,
+        total_variation=obs_tv, forward_consistency_l2=nan,
+        mass_candidate=nan, mass_true=nan, mass_error=nan, mass_rel_error=nan,
+        max_abs_score_final=nan, max_score_error_L2=nan, runtime_seconds=0.0,
+    )
 
     # -----------------------------------------------------------------------
     # Save artifacts
@@ -192,11 +208,11 @@ def main() -> None:
     print("\n" + "=" * 60)
     print("RESULTS SUMMARY")
     print("=" * 60)
-    print(f"{'Method':<40} {'Status':<15} {'L2 error':>10}")
-    print("-" * 65)
+    print(f"{'Method':<40} {'Status':<15} {'L2 error':>10} {'rel_L2':>8}")
+    print("-" * 75)
     for m in metrics_list:
         status = "OK" if m.completed else f"FAIL@{m.failure_step}"
-        print(f"{m.method_name:<40} {status:<15} {m.l2_error:>10.5f}")
+        print(f"{m.method_name:<40} {status:<15} {m.l2_error:>10.5f} {m.relative_l2:>8.4f}")
 
     print(f"\nStep-0 reconstruction L2 error: {recon_err:.6f}")
     print(f"\nAll outputs saved to: {out_dir}")

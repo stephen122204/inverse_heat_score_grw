@@ -48,11 +48,28 @@ def save_metrics_csv(metrics_list: List[MethodMetrics], out_dir: Path) -> Path:
             "failure_step": m.failure_step if m.failure_step is not None else "",
             "failure_msg": m.failure_msg,
             "l2_error": m.l2_error,
+            "relative_l2": getattr(m, "relative_l2", ""),
+            "linf_error": getattr(m, "linf_error", ""),
             "peak_value": m.peak_value,
+            "peak_ratio": getattr(m, "peak_ratio", ""),
             "peak_location": m.peak_location,
             "peak_width_fwhm": m.peak_width_fwhm,
+            "sigma_moment": getattr(m, "sigma_moment", ""),
+            "width_moment": getattr(m, "width_moment", ""),
+            "A_fit": getattr(m, "A_fit", ""),
+            "mu_fit": getattr(m, "mu_fit", ""),
+            "sigma_fit": getattr(m, "sigma_fit", ""),
+            "fit_success": getattr(m, "fit_success", ""),
+            "fit_rmse": getattr(m, "fit_rmse", ""),
             "total_variation": m.total_variation,
             "forward_consistency_l2": m.forward_consistency_l2,
+            "mass_candidate": getattr(m, "mass_candidate", ""),
+            "mass_true": getattr(m, "mass_true", ""),
+            "mass_error": getattr(m, "mass_error", ""),
+            "mass_rel_error": getattr(m, "mass_rel_error", ""),
+            "max_abs_score_final": getattr(m, "max_abs_score_final", ""),
+            "max_score_error_L2": getattr(m, "max_score_error_L2", ""),
+            "runtime_seconds": getattr(m, "runtime_seconds", ""),
         })
     df = pd.DataFrame(rows)
     path = out_dir / "metrics_summary.csv"
@@ -170,23 +187,30 @@ def write_run_summary(
         lines.append(f"  Status:    {'COMPLETED' if m.completed else f'FAILED at step {m.failure_step}'}")
         if m.failure_msg:
             lines.append(f"  Failure:   {m.failure_msg}")
-        lines.append(f"  L2 error:  {m.l2_error:.6f}")
-        lines.append(f"  Peak:      {m.peak_value:.4f} at x={m.peak_location:.4f}")
-        lines.append(f"  FWHM:      {m.peak_width_fwhm:.4f}")
-        lines.append(f"  TV:        {m.total_variation:.4f}")
-        lines.append(f"  Fwd cons:  {m.forward_consistency_l2:.6f}")
+        lines.append(f"  L2 error:     {m.l2_error:.6f}  (rel: {getattr(m, 'relative_l2', float('nan')):.4f}, Linf: {getattr(m, 'linf_error', float('nan')):.6f})")
+        lines.append(f"  Peak:         {m.peak_value:.4f} at x={m.peak_location:.4f}  (ratio vs true: {getattr(m, 'peak_ratio', float('nan')):.4f})")
+        lines.append(f"  FWHM:         {m.peak_width_fwhm:.4f}  (sigma_moment: {getattr(m, 'sigma_moment', float('nan')):.4f})")
+        lines.append(f"  Gauss fit:    A={getattr(m, 'A_fit', float('nan')):.4f}, mu={getattr(m, 'mu_fit', float('nan')):.4f}, sigma={getattr(m, 'sigma_fit', float('nan')):.4f}, ok={getattr(m, 'fit_success', '?')}")
+        lines.append(f"  Mass:         cand={getattr(m, 'mass_candidate', float('nan')):.4f}, true={getattr(m, 'mass_true', float('nan')):.4f}, rel_err={getattr(m, 'mass_rel_error', float('nan')):.4f}")
+        lines.append(f"  TV:           {m.total_variation:.4f}")
+        lines.append(f"  Fwd cons:     {m.forward_consistency_l2:.6f}")
+        lines.append(f"  Score err L2: {getattr(m, 'max_score_error_L2', float('nan')):.4f}")
+        lines.append(f"  Runtime:      {getattr(m, 'runtime_seconds', float('nan')):.3f}s")
     lines.append("")
 
     lines.append("METRICS TABLE")
     lines.append("-" * 40)
-    header = f"{'Method':<40} {'Status':<15} {'L2 error':>10} {'Peak':>8} {'FWHM':>8} {'FwdCons':>10}"
+    header = f"{'Method':<40} {'Status':<15} {'L2 error':>10} {'rel_L2':>8} {'Peak ratio':>10} {'FwdCons':>10} {'Runtime':>8}"
     lines.append(header)
     lines.append("-" * len(header))
     for m in metrics_list:
         status = "OK" if m.completed else f"FAIL@{m.failure_step}"
         lines.append(
             f"{m.method_name:<40} {status:<15} {m.l2_error:>10.5f} "
-            f"{m.peak_value:>8.4f} {m.peak_width_fwhm:>8.4f} {m.forward_consistency_l2:>10.5f}"
+            f"{getattr(m, 'relative_l2', float('nan')):>8.4f} "
+            f"{getattr(m, 'peak_ratio', float('nan')):>10.4f} "
+            f"{m.forward_consistency_l2:>10.5f} "
+            f"{getattr(m, 'runtime_seconds', float('nan')):>8.3f}"
         )
     lines.append("")
 

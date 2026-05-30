@@ -48,6 +48,7 @@ The partial result up to the failure step is returned.
 
 from __future__ import annotations
 
+import time
 import numpy as np
 from dataclasses import dataclass, field
 from typing import Optional
@@ -88,6 +89,17 @@ class MethodResult:
     score_mean: list = field(default_factory=list)
     score_std: list = field(default_factory=list)
     final_positions: Optional[np.ndarray] = None
+    # Per-step score error vs oracle (for estimated-score methods)
+    score_L2_error_vs_oracle: list = field(default_factory=list)
+    score_Linf_error_vs_oracle: list = field(default_factory=list)
+    score_core_L2_error_vs_oracle: list = field(default_factory=list)
+    score_core_Linf_error_vs_oracle: list = field(default_factory=list)
+    # Score overlay snapshots: step -> (x_grid, s_est, s_oracle)
+    score_overlay_snapshots: dict = field(default_factory=dict)
+    # Steps where estimated score error was suspiciously exactly 0.0
+    score_suspicious_steps: list = field(default_factory=list)
+    # Wall-clock runtime in seconds
+    runtime_seconds: float = 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -102,9 +114,12 @@ def _check_positions(positions: np.ndarray, threshold: float) -> tuple[bool, str
     return True, "OK"
 
 
-def _record_snapshot_steps() -> set:
-    """Steps at which to save field snapshots for plotting."""
-    return {0, 1, 2, 5, 10}
+def _record_snapshot_steps(n_steps: int) -> set:
+    """Steps at which to save field snapshots for plotting.
+    Always include step 0, 1, 2, the midpoint, and the final step.
+    """
+    mid = n_steps // 2
+    return {0, 1, 2, 5, 10, mid, n_steps}
 
 
 # ---------------------------------------------------------------------------
@@ -121,6 +136,8 @@ def _run_integration(
     use_noise: bool,
     stochastic_coeff: float,  # 2*alpha for stochastic, alpha for deterministic
     score_source: str,        # "oracle" or "estimated"
+    oracle_mode: str = "normal",    # "normal" | "zero" | "flip"  (ablation)
+    estimated_mode: str = "normal", # "normal" | "zero" | "flip"  (ablation)
 ) -> MethodResult:
     """
     Generic integration loop.
@@ -136,7 +153,9 @@ def _run_integration(
     dt = cfg.heat.dt
     n_steps = cfg.n_steps
     noise_scale = np.sqrt(2.0 * alpha * dt)   # std of one Brownian increment
-    snapshot_steps = _record_snapshot_steps()
+    snapshot_steps = _record_snapshot_steps(n_steps)
+    # Score overlay snapshots at step 0, midpoint, final
+    overlay_steps = {0, n_steps // 2, n_steps}
 
     result = MethodResult(
         method_name=method_name,
@@ -151,6 +170,7 @@ def _run_integration(
     result.step_snapshots[0] = snap0.copy()
 
     positions = state.positions.copy()
+    t_start = time.perf_counter()
 
     for k in range(n_steps):
         # Physical time at this backward step: tau = k*dt, t_phys = T - tau
@@ -161,7 +181,6 @@ def _run_integration(
         if use_score:
             if score_source == "oracle":
                 scores = oracle_score(positions, t_phys, cfg)
-                # Oracle score is always finite for Gaussian; still check
                 if not np.all(np.isfinite(scores)):
                     result.failure_step = k
                     result.failure_msg = "Oracle score NaN/Inf (unexpected)"
@@ -169,8 +188,20 @@ def _run_integration(
                         GlobState(positions, state.weights, state.u_left,
                                   state.x_min, state.x_max), x_grid)
                     result.final_positions = positions.copy()
+                    result.runtime_seconds = time.perf_counter() - t_start
                     return result
 
+                # Record zero error for oracle (oracle vs oracle = 0)
+                result.score_L2_error_vs_oracle.append(0.0)
+                result.score_Linf_error_vs_oracle.append(0.0)
+                result.score_core_L2_error_vs_oracle.append(0.0)
+                result.score_core_Linf_error_vs_oracle.append(0.0)
+
+                # Apply oracle ablation mode AFTER recording zero error
+                if oracle_mode == "zero":
+                    scores = np.zeros_like(scores)
+                elif oracle_mode == "flip":
+                    scores = -scores
                 drift = stochastic_coeff * scores * dt
 
             elif score_source == "estimated":
@@ -187,31 +218,86 @@ def _run_integration(
                     result.failure_msg = f"Estimated score instability at step {k}: {msg}"
                     result.candidate = reconstruct_field(tmp_state, x_grid)
                     result.final_positions = positions.copy()
+                    result.runtime_seconds = time.perf_counter() - t_start
                     return result
+
+                # --- Score error vs oracle on grid (using UNMODIFIED s_est) ---
+                s_oracle_grid = oracle_score(x_grid, t_phys, cfg)
+                u_grid_now = reconstruct_field(tmp_state, x_grid)
+                dx = x_grid[1] - x_grid[0]
+                u_x_grid = np.gradient(u_grid_now, dx)
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    s_est_grid = np.where(u_grid_now != 0.0,
+                                         u_x_grid / u_grid_now, np.nan)
+
+                finite_mask = np.isfinite(s_est_grid) & np.isfinite(s_oracle_grid)
+                core_mask = finite_mask & (u_grid_now > 0.05 * np.max(u_grid_now))
+                if np.any(finite_mask):
+                    err_all = s_est_grid[finite_mask] - s_oracle_grid[finite_mask]
+                    s_L2 = float(np.sqrt(dx * np.sum(err_all ** 2)))
+                    s_Linf = float(np.max(np.abs(err_all)))
+                else:
+                    s_L2 = float("nan")
+                    s_Linf = float("nan")
+                if np.any(core_mask):
+                    err_core = s_est_grid[core_mask] - s_oracle_grid[core_mask]
+                    s_core_L2 = float(np.sqrt(dx * np.sum(err_core ** 2)))
+                    s_core_Linf = float(np.max(np.abs(err_core)))
+                else:
+                    s_core_L2 = float("nan")
+                    s_core_Linf = float("nan")
+
+                result.score_L2_error_vs_oracle.append(s_L2)
+                result.score_Linf_error_vs_oracle.append(s_Linf)
+                result.score_core_L2_error_vs_oracle.append(s_core_L2)
+                result.score_core_Linf_error_vs_oracle.append(s_core_Linf)
+
+                # Suspicious zero: s_L2 exactly 0.0 despite finite comparisons
+                if s_L2 == 0.0 and np.any(finite_mask):
+                    result.score_suspicious_steps.append(k)
+
+                # Score overlay snapshot at key steps (before mode override)
+                if k in overlay_steps:
+                    result.score_overlay_snapshots[k] = (
+                        x_grid.copy(), s_est_grid.copy(), s_oracle_grid.copy()
+                    )
+
+                # Apply estimated ablation mode AFTER recording errors
+                if estimated_mode == "zero":
+                    scores = np.zeros_like(scores)
+                elif estimated_mode == "flip":
+                    scores = -scores
                 drift = stochastic_coeff * scores * dt
+
             else:
                 raise ValueError(f"Unknown score_source: {score_source}")
 
-            # Record score diagnostics
+            # Record score diagnostics (from the (possibly overridden) scores)
             finite_scores = scores[np.isfinite(scores)]
-            result.score_max_abs.append(float(np.max(np.abs(finite_scores))) if len(finite_scores) else np.nan)
-            result.score_mean.append(float(np.mean(finite_scores)) if len(finite_scores) else np.nan)
-            result.score_std.append(float(np.std(finite_scores)) if len(finite_scores) else np.nan)
+            result.score_max_abs.append(
+                float(np.max(np.abs(finite_scores))) if len(finite_scores) else np.nan)
+            result.score_mean.append(
+                float(np.mean(finite_scores)) if len(finite_scores) else np.nan)
+            result.score_std.append(
+                float(np.std(finite_scores)) if len(finite_scores) else np.nan)
         else:
+            # Naive backward: no score drift
             drift = np.zeros_like(positions)
-            # No score; still record zeros for consistent plotting
             result.score_max_abs.append(0.0)
             result.score_mean.append(0.0)
             result.score_std.append(0.0)
+            result.score_L2_error_vs_oracle.append(float("nan"))
+            result.score_Linf_error_vs_oracle.append(float("nan"))
+            result.score_core_L2_error_vs_oracle.append(float("nan"))
+            result.score_core_Linf_error_vs_oracle.append(float("nan"))
 
         # --- Noise increment ---
         if use_noise:
             xi = rng.standard_normal(len(positions))
-            # Naive backward: subtract noise; score methods: add noise
             if not use_score:
-                noise = -noise_scale * xi   # naive backward flip
+                noise = -noise_scale * xi   # naive backward: flip sign
             else:
-                noise = noise_scale * xi    # forward noise term in reverse SDE
+                noise = noise_scale * xi    # reverse SDE: add noise
         else:
             noise = np.zeros_like(positions)
 
@@ -231,14 +317,29 @@ def _run_integration(
                                   state.x_min, state.x_max)
             result.candidate = reconstruct_field(tmp_state, x_grid)
             result.final_positions = positions.copy()
+            result.runtime_seconds = time.perf_counter() - t_start
             return result
 
-        # --- Snapshot ---
+        # --- Field snapshot ---
         step_idx = k + 1
         if step_idx in snapshot_steps:
             tmp_state = GlobState(positions, state.weights, state.u_left,
                                   state.x_min, state.x_max)
             result.step_snapshots[step_idx] = reconstruct_field(tmp_state, x_grid)
+
+        # Score overlay at end-of-step (uses current field for overlay)
+        if score_source == "estimated" and use_score and step_idx in overlay_steps:
+            tmp_state = GlobState(positions, state.weights, state.u_left,
+                                  state.x_min, state.x_max)
+            u_g = reconstruct_field(tmp_state, x_grid)
+            dx_g = x_grid[1] - x_grid[0]
+            ux_g = np.gradient(u_g, dx_g)
+            with np.errstate(divide="ignore", invalid="ignore"):
+                s_est_end = np.where(u_g != 0.0, ux_g / u_g, np.nan)
+            s_or_end = oracle_score(x_grid, cfg.heat.T - step_idx * dt, cfg)
+            result.score_overlay_snapshots[step_idx] = (
+                x_grid.copy(), s_est_end.copy(), s_or_end.copy()
+            )
 
     # All steps completed
     final_state = GlobState(positions, state.weights, state.u_left,
@@ -247,6 +348,7 @@ def _run_integration(
     result.failure_msg = ""
     result.candidate = reconstruct_field(final_state, x_grid)
     result.final_positions = positions.copy()
+    result.runtime_seconds = time.perf_counter() - t_start
     return result
 
 
@@ -286,6 +388,7 @@ def run_oracle_score_deterministic(
     x_grid: np.ndarray,
     cfg: Config,
     rng: np.random.Generator,
+    oracle_mode: str = "normal",
 ) -> MethodResult:
     """
     Oracle probability-flow ODE: X_{k+1} = X_k + alpha * s_exact(X_k, t_phys) * dt.
@@ -303,8 +406,10 @@ def run_oracle_score_deterministic(
         rng=rng,
         use_score=True,
         use_noise=False,
-        stochastic_coeff=cfg.heat.alpha,   # alpha for deterministic flow
+        stochastic_coeff=cfg.heat.alpha,
         score_source="oracle",
+        oracle_mode=oracle_mode,
+        estimated_mode="normal",
     )
 
 
@@ -313,6 +418,7 @@ def run_oracle_score_stochastic(
     x_grid: np.ndarray,
     cfg: Config,
     rng: np.random.Generator,
+    oracle_mode: str = "normal",
 ) -> MethodResult:
     """
     Oracle reverse-time SDE:
@@ -331,8 +437,10 @@ def run_oracle_score_stochastic(
         rng=rng,
         use_score=True,
         use_noise=True,
-        stochastic_coeff=2.0 * cfg.heat.alpha,  # 2*alpha for stochastic SDE
+        stochastic_coeff=2.0 * cfg.heat.alpha,
         score_source="oracle",
+        oracle_mode=oracle_mode,
+        estimated_mode="normal",
     )
 
 
@@ -341,6 +449,7 @@ def run_estimated_score_deterministic_raw(
     x_grid: np.ndarray,
     cfg: Config,
     rng: np.random.Generator,
+    estimated_mode: str = "normal",
 ) -> MethodResult:
     """
     Estimated probability-flow ODE with raw score:
@@ -362,6 +471,8 @@ def run_estimated_score_deterministic_raw(
         use_noise=False,
         stochastic_coeff=cfg.heat.alpha,
         score_source="estimated",
+        oracle_mode="normal",
+        estimated_mode=estimated_mode,
     )
 
 
@@ -370,6 +481,7 @@ def run_estimated_score_stochastic_raw(
     x_grid: np.ndarray,
     cfg: Config,
     rng: np.random.Generator,
+    estimated_mode: str = "normal",
 ) -> MethodResult:
     """
     Estimated reverse-time SDE with raw score:
@@ -389,4 +501,6 @@ def run_estimated_score_stochastic_raw(
         use_noise=True,
         stochastic_coeff=2.0 * cfg.heat.alpha,
         score_source="estimated",
+        oracle_mode="normal",
+        estimated_mode=estimated_mode,
     )

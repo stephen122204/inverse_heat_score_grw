@@ -40,30 +40,48 @@ from .globs import GlobState, reconstruct_field
 
 def oracle_score(positions: np.ndarray, t_phys: float, cfg: Config) -> np.ndarray:
     """
-    Exact score for the Gaussian solution at physical time t_phys:
-        s(x, t_phys) = -(x - mu) / sigma_t^2
-    where sigma_t^2 = sigma0^2 + 2 * alpha * t_phys.
+    Exact oracle score s(x, t_phys) = partial_x log u(x, t_phys) = u_x / u.
+
+    For Gaussian IC:
+        s = -(x - mu) / sigma_t^2,  sigma_t^2 = sigma0^2 + 2*alpha*t_phys
+
+    For Gaussian mixture IC:
+        u = background + sum_i A_i(t)*exp(-(x-mu_i)^2/(2*sigma_it^2))
+        u_x = sum_i A_i(t)*exp(...) * (-(x-mu_i)/sigma_it^2)
+        s = u_x / u  (analytic, no numerical differentiation)
+        Where u = 0 (background-only tail), score is set to 0.
 
     Parameters
     ----------
-    positions : glob x-coordinates at which to evaluate the score.
-    t_phys    : physical time (T - tau), where tau = k * dt.
+    positions : positions at which to evaluate the score.
+    t_phys    : physical time T - tau (tau = k*dt, k = current backward step).
     cfg       : experiment config.
-
-    Returns
-    -------
-    score values at each position.
     """
     ic = cfg.initial_condition
     alpha = cfg.heat.alpha
+    t = max(t_phys, 0.0)
 
-    if t_phys <= 0.0:
-        # At t_phys = 0 the Gaussian has width sigma0; score still defined
-        sigma_t2 = ic.sigma0 ** 2
+    if ic.type == "gaussian":
+        sigma_t2 = ic.sigma0 ** 2 + 2.0 * alpha * t
+        return -(positions - ic.mu) / sigma_t2
+
+    elif ic.type == "gaussian_mixture":
+        # Analytically compute u and u_x at each position
+        u = np.full_like(positions, ic.background, dtype=float)
+        u_x = np.zeros_like(positions, dtype=float)
+        for comp in ic.components:
+            sigma_t2 = comp.sigma0 ** 2 + 2.0 * alpha * t
+            sigma_t = np.sqrt(sigma_t2)
+            A_t = comp.amplitude * (comp.sigma0 / sigma_t)
+            gauss = A_t * np.exp(-0.5 * (positions - comp.mu) ** 2 / sigma_t2)
+            u += gauss
+            u_x += gauss * (-(positions - comp.mu) / sigma_t2)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            scores = np.where(u > 0.0, u_x / u, 0.0)
+        return scores
+
     else:
-        sigma_t2 = ic.sigma0 ** 2 + 2.0 * alpha * t_phys
-
-    return -(positions - ic.mu) / sigma_t2
+        raise ValueError(f"Unknown IC type for oracle score: {ic.type!r}")
 
 
 # ---------------------------------------------------------------------------
