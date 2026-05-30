@@ -54,7 +54,14 @@ from dataclasses import dataclass, field
 from typing import Optional
 from .config import Config
 from .globs import GlobState, field_to_globs, reconstruct_field, apply_reflecting_boundary
-from .scores import oracle_score, estimated_score_raw, estimated_score_regularized
+from .scores import (
+    oracle_score,
+    estimated_score_raw,
+    estimated_score_regularized,
+    direct_kde_score,
+    log_density_fd_score,
+    smoothed_log_score,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -953,23 +960,36 @@ def run_density_particle_estimated_score_deterministic(
     scale_epsilon_by_peak: bool = False,
     score_clipping: "float | None" = None,
     save_snapshots: bool = True,
+    score_method: str = "fd_grid_ratio",
+    smooth_sigma_factor: float = 1.0,
 ) -> MethodResult:
     """
     Density-particle probability-flow ODE with estimated score.
 
     Like run_density_particle_oracle_score_deterministic, but computes the
     score from the current reconstructed density rather than the exact oracle
-    formula.  The score is estimated via the grid-ratio path:
+    formula.
 
-        reconstruct u on grid
-        u_x = gradient(u)
-        s_grid = u_x / (u + epsilon_actual)     [grid-ratio path]
-        interpolate s_grid to particle positions
+    score_method controls how the score is estimated:
 
-    NaN/Inf scores are NEVER silently replaced with zero.  Any step that
-    produces a non-finite or too-large interpolated score at any particle
-    position immediately halts integration and records failure_step and
-    failure_msg.
+    "fd_grid_ratio" (original):
+        reconstruct u on grid → np.gradient(u) → u_x/(u+ε) → interpolate.
+    "direct_kde":
+        evaluate KDE derivative directly at particle positions (no grid step).
+        s(X_i) = -sum_j w_j (X_i-X_j)/h^2 K_h(X_i-X_j)
+                  / (sum_j w_j K_h(X_i-X_j) + ε)
+        Particle-native; avoids finite-difference noise amplification.
+        Also evaluates on x_grid for oracle comparison diagnostics.
+    "log_density_fd":
+        reconstruct u on grid → log(u+ε) → np.gradient(log u) → interpolate.
+        Mathematically equivalent to fd_grid_ratio but numerically different
+        near zeros.
+    "smoothed_log":
+        reconstruct u on grid → Gaussian smooth (sigma = smooth_sigma_factor * bw)
+        → log(u+ε) → np.gradient → interpolate.  Suppresses high-frequency
+        KDE noise before differentiating.
+
+    NaN/Inf scores are NEVER silently replaced with zero.
 
     Parameters
     ----------
@@ -981,36 +1001,18 @@ def run_density_particle_estimated_score_deterministic(
     recon_method       : "histogram" or "kde".
     bandwidth          : explicit KDE bandwidth in x-units.  If None,
                          bandwidth = bandwidth_factor * dx.
-    bandwidth_factor   : KDE bandwidth as a multiple of dx.  Used only when
-                         bandwidth is None.
-    epsilon            : denominator regularization floor.  If 0.0, raw
-                         score s = u_x / u (may fail if u = 0 at grid pts).
-    scale_epsilon_by_peak : if True, epsilon_actual = epsilon * max(u_recon)
-                            at each step.  Adapts to the current field scale.
-    score_clipping     : if not None, clip |s| to score_clipping on the grid
-                         before interpolation.
+    bandwidth_factor   : KDE bandwidth as a multiple of dx.
+    epsilon            : denominator regularization floor.
+    scale_epsilon_by_peak : if True, epsilon_actual = epsilon * max(u_recon).
+    score_clipping     : if not None, clip |s| to score_clipping.
     save_snapshots     : if True, save field snapshots at key steps.
-
-    Returns
-    -------
-    MethodResult with:
-        method_name  = "density_particle_estimated_raw"      (epsilon=0)
-                       "density_particle_estimated_eps=XeY" (epsilon>0)
-        score_estimator_type
-             = "density_particle_estimated_grid_ratio_raw"
-               "density_particle_estimated_grid_ratio_epsilon"
-        n_particles, reconstruction_method, bandwidth_used, bandwidth_factor,
-        step_zero_recon_error, mass_initial    (same as oracle version)
-        epsilon_used                : base epsilon value (pre-scaling)
-        epsilon_actual_per_step     : per-step actual epsilon (varies if scale_by_peak)
-        n_denominator_below_epsilon : per-step count of grid pts where u < eps_actual
-        n_clipped_scores            : per-step count of clipped score grid pts
-        mass_per_step               : per-step integral of reconstructed density
-        mean_abs_score              : per-step mean |score| at particle positions
-        score_L2_error_vs_oracle, score_Linf_error_vs_oracle,
-        score_core_L2_error_vs_oracle, score_core_Linf_error_vs_oracle : per-step
-        completed, failure_step, failure_msg, runtime_seconds
+    score_method       : one of "fd_grid_ratio", "direct_kde", "log_density_fd",
+                         "smoothed_log".
+    smooth_sigma_factor: for "smoothed_log" only — smooth sigma = factor * bw.
     """
+    _VALID_SCORE_METHODS = ("fd_grid_ratio", "direct_kde", "log_density_fd", "smoothed_log")
+    if score_method not in _VALID_SCORE_METHODS:
+        raise ValueError(f"score_method must be one of {_VALID_SCORE_METHODS}, got {score_method!r}")
     alpha = cfg.heat.alpha
     dt = cfg.heat.dt
     n_steps = cfg.n_steps
@@ -1021,13 +1023,30 @@ def run_density_particle_estimated_score_deterministic(
     # Determine KDE bandwidth
     bw = float(bandwidth) if bandwidth is not None else bandwidth_factor * dx
 
-    # Method naming encodes epsilon for CSV readability
+    # Smooth sigma for "smoothed_log" method
+    smooth_sigma = smooth_sigma_factor * bw
+
+    # Method naming encodes score_method and epsilon for CSV readability
     if epsilon == 0.0 and not scale_epsilon_by_peak:
-        method_name = "density_particle_estimated_raw"
-        score_est_type = "density_particle_estimated_grid_ratio_raw"
+        eps_tag = "raw"
     else:
-        method_name = f"density_particle_estimated_eps={epsilon:.0e}"
-        score_est_type = "density_particle_estimated_grid_ratio_epsilon"
+        eps_tag = f"eps={epsilon:.0e}"
+
+    # Map score_method to short canonical names used in MethodResult
+    _SCORE_METHOD_NAMES = {
+        "fd_grid_ratio":  "density_est_fd_grid_ratio",
+        "direct_kde":     "density_est_direct_kde",
+        "log_density_fd": "density_est_log_density_fd",
+        "smoothed_log":   "density_est_smoothed_log",
+    }
+    _SCORE_EST_TYPES = {
+        "fd_grid_ratio":  "density_particle_estimated_grid_ratio_raw" if epsilon == 0.0 else "density_particle_estimated_grid_ratio_epsilon",
+        "direct_kde":     "density_particle_estimated_direct_kde",
+        "log_density_fd": "density_particle_estimated_log_density_fd",
+        "smoothed_log":   "density_particle_estimated_smoothed_log",
+    }
+    method_name = f"{_SCORE_METHOD_NAMES[score_method]}_{eps_tag}"
+    score_est_type = _SCORE_EST_TYPES[score_method]
 
     result = MethodResult(
         method_name=method_name,
@@ -1068,9 +1087,6 @@ def run_density_particle_estimated_score_deterministic(
         # --- Reconstruct density on grid from current particle positions ---
         u_recon = _reconstruct_density_particles(positions, total_mass, x_grid, recon_method, bw)
 
-        # --- Numerical derivative u_x (central differences via np.gradient) ---
-        u_x = np.gradient(u_recon, dx)
-
         # --- Compute effective epsilon for this step ---
         if scale_epsilon_by_peak:
             peak_u = float(np.max(u_recon)) if np.any(u_recon > 0.0) else 0.0
@@ -1090,20 +1106,77 @@ def run_density_particle_estimated_score_deterministic(
             n_below_eps = int(np.sum(u_recon <= 0.0))
         result.n_denominator_below_epsilon.append(n_below_eps)
 
-        # --- Estimated score on grid: s = u_x / (u + epsilon_actual) ---
-        denom = u_recon + epsilon_actual
-        with np.errstate(divide="ignore", invalid="ignore"):
-            s_grid = np.where(denom > 0.0, u_x / denom, np.nan)
-
-        # --- Optional score clipping on grid ---
+        # --- Estimate score and get s_grid (for oracle comparison) ---
         n_clipped = 0
-        if score_clipping is not None and score_clipping > 0.0:
-            finite_mask = np.isfinite(s_grid)
-            clip_mask = finite_mask & (np.abs(s_grid) > score_clipping)
-            n_clipped = int(np.sum(clip_mask))
-            s_grid = np.where(finite_mask,
-                              np.clip(s_grid, -score_clipping, score_clipping),
-                              s_grid)
+
+        if score_method == "fd_grid_ratio":
+            # Original path: gradient(u) / (u + ε) on grid → interpolate
+            u_x = np.gradient(u_recon, dx)
+            denom = u_recon + epsilon_actual
+            with np.errstate(divide="ignore", invalid="ignore"):
+                s_grid = np.where(denom > 0.0, u_x / denom, np.nan)
+            if score_clipping is not None and score_clipping > 0.0:
+                finite_mask_clip = np.isfinite(s_grid)
+                clip_mask = finite_mask_clip & (np.abs(s_grid) > score_clipping)
+                n_clipped = int(np.sum(clip_mask))
+                s_grid = np.where(finite_mask_clip,
+                                  np.clip(s_grid, -score_clipping, score_clipping),
+                                  s_grid)
+            scores = np.interp(positions, x_grid, s_grid)
+
+        elif score_method == "direct_kde":
+            # Direct KDE derivative at particle positions (no grid step)
+            w_uniform = np.full(n_particles, total_mass / n_particles)
+            scores, kde_diag = direct_kde_score(
+                positions, positions, w_uniform, bw, epsilon=epsilon_actual
+            )
+            # Also evaluate on grid for oracle comparison diagnostics
+            s_grid, _ = direct_kde_score(
+                x_grid, positions, w_uniform, bw, epsilon=epsilon_actual
+            )
+            # Score clipping (applied to scores-at-particles and s_grid)
+            if score_clipping is not None and score_clipping > 0.0:
+                finite_mask_clip = np.isfinite(scores)
+                clip_mask = finite_mask_clip & (np.abs(scores) > score_clipping)
+                n_clipped = int(np.sum(clip_mask))
+                scores = np.where(finite_mask_clip,
+                                  np.clip(scores, -score_clipping, score_clipping),
+                                  scores)
+                s_grid = np.where(np.isfinite(s_grid),
+                                  np.clip(s_grid, -score_clipping, score_clipping),
+                                  s_grid)
+
+        elif score_method == "log_density_fd":
+            # log-density finite-difference path
+            scores_grid, _ = log_density_fd_score(
+                x_grid, u_recon, x_grid, epsilon=epsilon_actual
+            )
+            s_grid = scores_grid
+            if score_clipping is not None and score_clipping > 0.0:
+                finite_mask_clip = np.isfinite(s_grid)
+                clip_mask = finite_mask_clip & (np.abs(s_grid) > score_clipping)
+                n_clipped = int(np.sum(clip_mask))
+                s_grid = np.where(finite_mask_clip,
+                                  np.clip(s_grid, -score_clipping, score_clipping),
+                                  s_grid)
+            scores = np.interp(positions, x_grid, s_grid)
+
+        elif score_method == "smoothed_log":
+            # Gaussian-smoothed log-density gradient
+            scores_grid, _ = smoothed_log_score(
+                x_grid, u_recon, x_grid,
+                smooth_sigma=smooth_sigma, epsilon=epsilon_actual
+            )
+            s_grid = scores_grid
+            if score_clipping is not None and score_clipping > 0.0:
+                finite_mask_clip = np.isfinite(s_grid)
+                clip_mask = finite_mask_clip & (np.abs(s_grid) > score_clipping)
+                n_clipped = int(np.sum(clip_mask))
+                s_grid = np.where(finite_mask_clip,
+                                  np.clip(s_grid, -score_clipping, score_clipping),
+                                  s_grid)
+            scores = np.interp(positions, x_grid, s_grid)
+
         result.n_clipped_scores.append(n_clipped)
 
         # --- Compare estimated score vs oracle on grid ---
@@ -1133,16 +1206,12 @@ def run_density_particle_estimated_score_deterministic(
         result.score_core_L2_error_vs_oracle.append(s_core_L2)
         result.score_core_Linf_error_vs_oracle.append(s_core_Linf)
 
-        # --- Interpolate score from grid to particle positions ---
-        # np.interp propagates NaN from s_grid to particles in NaN-covered regions
-        scores = np.interp(positions, x_grid, s_grid)
-
         # --- Safety: NaN/Inf in interpolated scores — do NOT zero them out ---
         if not np.all(np.isfinite(scores)):
             n_bad = int(np.sum(~np.isfinite(scores)))
             result.failure_step = k
             result.failure_msg = (
-                f"NaN/Inf in estimated score at step {k} "
+                f"NaN/Inf in estimated score ({score_method}) at step {k} "
                 f"({n_bad}/{n_particles} particles); "
                 f"epsilon_actual={epsilon_actual:.2e}, "
                 f"n_denom_zero={n_below_eps}"
@@ -1158,7 +1227,7 @@ def run_density_particle_estimated_score_deterministic(
             result.failure_step = k
             result.failure_msg = (
                 f"Score magnitude {max_s:.3e} > {score_fail_thresh:.3e} at step {k}; "
-                f"epsilon_actual={epsilon_actual:.2e}"
+                f"score_method={score_method}, epsilon_actual={epsilon_actual:.2e}"
             )
             result.candidate = _reconstruct_density_particles(
                 positions, total_mass, x_grid, recon_method, bw)

@@ -256,3 +256,206 @@ def estimated_score_regularized(
         return scores, False, f"Regularized score magnitude {max_s:.3e} exceeds threshold {threshold:.3e}", diag
 
     return scores, True, "OK", diag
+
+
+# ---------------------------------------------------------------------------
+# Direct KDE derivative score (particle-native, no finite differences)
+# ---------------------------------------------------------------------------
+
+def direct_kde_score(
+    x_eval: np.ndarray,
+    positions: np.ndarray,
+    weights: np.ndarray,
+    bandwidth: float,
+    epsilon: float = 0.0,
+) -> tuple[np.ndarray, dict]:
+    """
+    Compute the score s = partial_x log u at x_eval directly from the
+    Gaussian KDE representation, without finite-difference grid operations.
+
+    For a weighted Gaussian KDE:
+        u(x) = sum_i w_i * K_h(x - X_i)
+        K_h(z) = (1/(h*sqrt(2*pi))) * exp(-z^2 / (2*h^2))
+        K_h'(z) = -(z / h^2) * K_h(z)
+
+    so:
+        u_x(x) = sum_i w_i * K_h'(x - X_i) = -sum_i w_i * ((x-X_i)/h^2) * K_h(x-X_i)
+
+    Score:
+        s(x) = u_x(x) / (u(x) + epsilon)
+
+    This avoids the grid-ratio / finite-difference path entirely:
+      - No np.gradient amplifying high-frequency noise.
+      - No interpolation from grid to particle positions.
+      - Score is evaluated directly at any x (particle positions or grid).
+
+    Memory: for N particles × M eval points, allocates one (M, N) matrix.
+    For N=10,000 and M=800 this is ~64 MB; chunked if needed.
+
+    Parameters
+    ----------
+    x_eval    : (M,) evaluation points (particle positions or x_grid).
+    positions : (N,) particle positions.
+    weights   : (N,) particle weights (mass per particle = total_mass / N).
+    bandwidth : Gaussian KDE bandwidth h (in x-units).
+    epsilon   : denominator regularization floor.
+
+    Returns
+    -------
+    scores : (M,) score at each eval point.
+    diag   : dict with diagnostics:
+               density_at_eval  : u(x_eval)
+               numerator        : u_x(x_eval)
+               denominator      : u(x_eval) + epsilon
+               max_abs_score    : max|s| over finite values
+               score_mean       : mean s over finite values
+               score_std        : std s over finite values
+               n_nonfinite      : number of non-finite score values
+               epsilon_used     : epsilon argument (possibly 0)
+               bandwidth_used   : bandwidth argument
+    """
+    M = len(x_eval)
+    N = len(positions)
+
+    # Chunk size chosen to stay within ~256 MB: M*N*8 bytes per array,
+    # we need 3 arrays → limit chunk to 256 MB / (3 * 8) / M elements.
+    max_chunk = max(1, int(256 * 1024 * 1024 / (3 * 8 * M)))
+
+    u_vals = np.zeros(M, dtype=np.float64)
+    ux_vals = np.zeros(M, dtype=np.float64)
+
+    h = bandwidth
+    h2 = h * h
+    norm = 1.0 / (h * np.sqrt(2.0 * np.pi))
+
+    for start in range(0, N, max_chunk):
+        end = min(start + max_chunk, N)
+        pos_chunk = positions[start:end]    # (chunk,)
+        w_chunk = weights[start:end]        # (chunk,)
+
+        diff = x_eval[:, None] - pos_chunk[None, :]   # (M, chunk)
+        kern = norm * np.exp(-0.5 * (diff / h) ** 2)  # (M, chunk)  K_h
+        kern_prime = -(diff / h2) * kern               # (M, chunk)  K_h'
+
+        u_vals  += kern @ w_chunk       # (M,)
+        ux_vals += kern_prime @ w_chunk  # (M,)
+
+    denom = u_vals + epsilon
+    with np.errstate(divide="ignore", invalid="ignore"):
+        scores = np.where(denom > 0.0, ux_vals / denom, np.nan)
+
+    finite_mask = np.isfinite(scores)
+    n_nonfinite = int(np.sum(~finite_mask))
+    finite_scores = scores[finite_mask]
+
+    diag = {
+        "density_at_eval": u_vals,
+        "numerator": ux_vals,
+        "denominator": denom,
+        "max_abs_score": float(np.max(np.abs(finite_scores))) if len(finite_scores) else float("nan"),
+        "score_mean": float(np.mean(finite_scores)) if len(finite_scores) else float("nan"),
+        "score_std": float(np.std(finite_scores)) if len(finite_scores) else float("nan"),
+        "n_nonfinite": n_nonfinite,
+        "epsilon_used": epsilon,
+        "bandwidth_used": bandwidth,
+    }
+    return scores, diag
+
+
+# ---------------------------------------------------------------------------
+# Log-density finite-difference score
+# ---------------------------------------------------------------------------
+
+def log_density_fd_score(
+    x_eval: np.ndarray,
+    u_grid: np.ndarray,
+    x_grid: np.ndarray,
+    epsilon: float = 0.0,
+) -> tuple[np.ndarray, dict]:
+    """
+    Estimate score as gradient of log(u + epsilon) on the grid, then
+    interpolate to x_eval.
+
+    s(x) = partial_x log(u + epsilon) = u_x / (u + epsilon)
+
+    This is mathematically the same as the fd_grid_ratio path but takes
+    the gradient of log rather than dividing gradient(u) by u.  The two
+    are numerically equivalent for smooth u; differ near zeros due to
+    float arithmetic ordering.
+
+    Returns
+    -------
+    scores : (len(x_eval),) score at eval points.
+    diag   : dict with density_at_grid, log_u, log_grad, max_abs_score,
+             n_nonfinite, epsilon_used.
+    """
+    dx = x_grid[1] - x_grid[0]
+    log_u = np.log(np.maximum(u_grid + epsilon, 1e-300))
+    s_grid = np.gradient(log_u, dx)
+
+    scores = np.interp(x_eval, x_grid, s_grid)
+    finite_mask = np.isfinite(scores)
+    n_nonfinite = int(np.sum(~finite_mask))
+
+    diag = {
+        "density_at_grid": u_grid,
+        "log_u": log_u,
+        "log_grad": s_grid,
+        "max_abs_score": float(np.max(np.abs(scores[finite_mask]))) if np.any(finite_mask) else float("nan"),
+        "n_nonfinite": n_nonfinite,
+        "epsilon_used": epsilon,
+    }
+    return scores, diag
+
+
+# ---------------------------------------------------------------------------
+# Smoothed-log score (Gaussian pre-smooth before log/gradient)
+# ---------------------------------------------------------------------------
+
+def smoothed_log_score(
+    x_eval: np.ndarray,
+    u_grid: np.ndarray,
+    x_grid: np.ndarray,
+    smooth_sigma: float,
+    epsilon: float = 0.0,
+) -> tuple[np.ndarray, dict]:
+    """
+    Smooth u with a Gaussian filter, then compute log-derivative score.
+
+    s(x) = partial_x log(smooth(u) + epsilon)
+
+    smooth_sigma is the Gaussian smoothing sigma in x-units.
+    This is the particle analogue of spectral truncation: it suppresses
+    high-frequency noise in the reconstructed density before differentiating.
+
+    Uses scipy.ndimage.gaussian_filter1d.
+
+    Returns
+    -------
+    scores : (len(x_eval),) score at eval points.
+    diag   : dict with u_smoothed, log_u, log_grad, smooth_sigma_used,
+             max_abs_score, n_nonfinite, epsilon_used.
+    """
+    from scipy.ndimage import gaussian_filter1d
+    dx = x_grid[1] - x_grid[0]
+    sigma_pixels = smooth_sigma / dx
+    u_smooth = gaussian_filter1d(u_grid, sigma=sigma_pixels, mode="nearest")
+    u_smooth = np.maximum(u_smooth, 0.0)
+
+    log_u = np.log(np.maximum(u_smooth + epsilon, 1e-300))
+    s_grid = np.gradient(log_u, dx)
+
+    scores = np.interp(x_eval, x_grid, s_grid)
+    finite_mask = np.isfinite(scores)
+    n_nonfinite = int(np.sum(~finite_mask))
+
+    diag = {
+        "u_smoothed": u_smooth,
+        "log_u": log_u,
+        "log_grad": s_grid,
+        "smooth_sigma_used": smooth_sigma,
+        "max_abs_score": float(np.max(np.abs(scores[finite_mask]))) if np.any(finite_mask) else float("nan"),
+        "n_nonfinite": n_nonfinite,
+        "epsilon_used": epsilon,
+    }
+    return scores, diag
