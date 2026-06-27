@@ -248,7 +248,7 @@ def _base_row(task: str, n_particles: int, n_grid: int, method_label: str,
 
 def _find_tikhonov_best(u_obs: np.ndarray, x_grid: np.ndarray,
                         true_u: np.ndarray, alpha: float, T: float,
-                        cfg: Config, lambdas=None) -> tuple[float, np.ndarray, float]:
+                        cfg: Config, lambdas=None) -> tuple[float, np.ndarray | None, float]:
     """Grid-search Tikhonov lambdas. Returns (best_lam, best_cand, best_rel_l2)."""
     if lambdas is None:
         lambdas = TIKHONOV_LAMBDAS
@@ -271,7 +271,7 @@ def _find_tikhonov_best(u_obs: np.ndarray, x_grid: np.ndarray,
 
 def _find_spectral_best(u_obs: np.ndarray, x_grid: np.ndarray,
                         true_u: np.ndarray, alpha: float, T: float,
-                        cfg: Config) -> tuple[float, np.ndarray, float]:
+                        cfg: Config) -> tuple[float, np.ndarray | None, float]:
     """Grid-search spectral cutoff noise_deltas. Returns (best_nd, best_cand, best_rel_l2)."""
     best_nd, best_cand, best_rl2 = float("nan"), None, float("inf")
     for nd in SPECTRAL_NOISE_DELTAS:
@@ -321,7 +321,7 @@ def run_task1_convergence(
     n_grid: int,
     epsilon: float,
     run_n20000: bool,
-) -> list[dict]:
+) -> tuple[list[dict], float]:
     """
     Task 1: run oracle + smoothed_log bw=4 + fd_ratio bw=4 for each N.
     Returns list of row dicts.
@@ -780,7 +780,7 @@ def write_summary(
             for e in etas:
                 if e in pivot.columns:
                     v = pivot.loc[ml, e]
-                    row_str += f"  {float(v):9.5f}"
+                    row_str += f"  {float(v):9.5f}"  # type: ignore[arg-type]
                 else:
                     row_str += f"  {'N/A':>9s}"
             lines.append(row_str)

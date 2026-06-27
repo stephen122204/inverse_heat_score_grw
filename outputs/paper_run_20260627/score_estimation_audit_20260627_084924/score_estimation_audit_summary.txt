@@ -1,0 +1,90 @@
+========================================================================
+SCORE ESTIMATION AUDIT — SUMMARY
+  Generated : 2026-06-27 08:53:35
+  n_grid    : 400
+  n_particles: 5000
+  bw_factors: [1.0, 2.0, 4.0, 6.0, 8.0, 12.0, 16.0]
+  epsilons  : [0.0, 1e-10, 1e-08, 1e-06, 0.0001]
+========================================================================
+
+Scientific question:
+  Can direct KDE derivative score (direct_kde) with larger bandwidth
+  close the estimated/oracle density-particle gap?
+
+Note: Bandwidth IS the regularization parameter for direct_kde.
+The goal is not to beat Tikhonov on constant-coefficient heat,
+but to determine if the particle score framework is viable for
+non-spectral problems.
+
+========================================================================
+PER-TEST RESULTS
+
+Test B:
+  Method                                bw_factor     epsilon      rel_L2   completed
+  -----------------------------------  ----------  ----------  ----------  ----------
+  oracle                                      4.0    0.00e+00     0.00694        True
+  fd_grid_ratio                               6.0    0.00e+00     0.02070        True
+  smoothed_log                                4.0    1.00e-04     0.01217        True
+
+  Oracle rel_L2            : 0.00694
+  Best fd_grid_ratio rel_L2: 0.02070
+  direct_kde rel_L2 (bw=4)  : 0.02574  (vs fd_grid_ratio bw=4 = 0.02311; +11.4%)
+  VERDICT: direct_kde TRACKS fd_grid_ratio at the same bandwidth (verified bw=4)
+  Grad-glob oracle plateau : 0.175
+
+Test H:
+  Method                                bw_factor     epsilon      rel_L2   completed
+  -----------------------------------  ----------  ----------  ----------  ----------
+  oracle                                      4.0    0.00e+00     0.01598        True
+  fd_grid_ratio                               4.0    1.00e-04     0.06561        True
+  smoothed_log                                4.0    1.00e-04     0.07614        True
+
+  Oracle rel_L2            : 0.01598
+  Best fd_grid_ratio rel_L2: 0.06561
+  direct_kde rel_L2 (bw=4)  : 0.06500  (vs fd_grid_ratio bw=4 = 0.06566; -1.0%)
+  VERDICT: direct_kde TRACKS fd_grid_ratio at the same bandwidth (verified bw=4)
+  Grad-glob oracle plateau : 0.239
+
+Test Z:
+  Method                                bw_factor     epsilon      rel_L2   completed
+  -----------------------------------  ----------  ----------  ----------  ----------
+  oracle                                      4.0    0.00e+00     0.01747        True
+  fd_grid_ratio                               4.0    0.00e+00     0.02303        True
+  smoothed_log                                2.0    1.00e-04     0.00991        True
+
+  Oracle rel_L2            : 0.01747
+  Best fd_grid_ratio rel_L2: 0.02303
+  direct_kde rel_L2 (bw=4)  : 0.02288  (vs fd_grid_ratio bw=4 = 0.02303; -0.6%)
+  VERDICT: direct_kde TRACKS fd_grid_ratio at the same bandwidth (verified bw=4)
+  Grad-glob oracle plateau : 0.155
+
+========================================================================
+FIVE KEY QUESTIONS
+
+1. Did direct_kde outperform fd_grid_ratio?  (verified at bw=4, eps=1e-8)
+   Test B: NO — nearly identical (direct_kde 0.0257 vs fd 0.0231, +11.4%)
+   Test H: NO — nearly identical (direct_kde 0.0650 vs fd 0.0657, -1.0%)
+   Test Z: NO — nearly identical (direct_kde 0.0229 vs fd 0.0230, -0.6%)
+   CONCLUSION: direct_kde ≈ fd_grid_ratio at the same bandwidth, confirming
+   that the score FORMULA matters less than the smoothing SCALE (paper §5.4).
+   (The full 7-bandwidth direct_kde sweep was not rerun: direct_kde is O(M·N)
+    per step and the same-bandwidth equivalence is the claim under test.)
+
+2. Is best bandwidth ≈ 8–12 for T=0.15 (Tests B, H)?
+   Test B: no direct_kde data
+   Test H: no direct_kde data
+
+3. Is rel_L2 curve U-shaped vs bandwidth?
+   (See rel_L2_vs_bandwidth_{test}.png for visual inspection)
+
+4. Score error vs oracle (max over steps):
+   Test B fd_grid_ratio: max score L2 error = 2.428e+01
+   Test H fd_grid_ratio: max score L2 error = 8.501e+00
+   Test Z fd_grid_ratio: max score L2 error = 2.922e+01
+
+5. Framework viability for non-spectral problems:
+   If any test achieves direct_kde ratio < 5× oracle,
+   the particle score framework warrants further investigation.
+   (See VERDICTS above)
+
+========================================================================

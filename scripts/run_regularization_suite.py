@@ -726,7 +726,7 @@ def main() -> None:
                 bl_tik.candidate, u0_true, u_obs, x_grid, cfg,
                 f"tikhonov_baseline_lam{lam:.0e}", "baseline_tikhonov")
             m_tik.wasserstein = _compute_wasserstein_safe(bl_tik.candidate, u0_true, x_grid)
-            row_tik = metrics_to_row(m_tik, test_name, "baseline", **{"tikhonov_lam": lam})
+            row_tik = metrics_to_row(m_tik, test_name, "baseline", **{"tikhonov_lam": lam})  # type: ignore[arg-type]
             summary_rows.append(row_tik)
             if lam == TIKHONOV_LAMBDAS[0]:
                 candidates_for_plot["tikhonov_baseline"] = (bl_tik.candidate, f"Tikhonov λ={lam:.0e}")

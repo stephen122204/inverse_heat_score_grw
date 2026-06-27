@@ -40,7 +40,31 @@ inverse_heat_score_grw/
 pip install -r requirements.txt
 ```
 
-## Running
+## Reproduce the paper (clone → run → numbers match)
+
+```bash
+git clone <repo-url> && cd inverse_heat_score_grw
+python -m venv .venv && source .venv/bin/activate   # Python 3.11
+pip install -r requirements.txt                     # pinned exact versions
+python reproduce.py                                 # all CSVs -> outputs/, all figures -> figures/
+```
+
+`reproduce.py` runs the five paper experiments plus the grid×N
+representation/convergence sweep (which backs **Fig 1**), then regenerates every
+figure **from the resulting CSVs** via `make_figures.py` (no figure hardcodes any
+result). Use `python reproduce.py --figures-only` to rebuild figures from
+existing CSVs.
+
+**Determinism.** The density-particle method is deterministic (quantile
+initialisation, analytic/KDE scores, no RNG), so the experiment CSVs are
+bit-for-bit reproducible; only the noise study uses fixed seeds `{0,1,2}` and is
+reproducible in its seed-averaged means. A single source of truth for every
+headline number lives in `FROZEN_NUMBERS.md`.
+
+> Note: `np.trapz` was removed in NumPy 2.0; the code uses a `np.trapezoid`
+> compatibility shim, so it runs on both NumPy 1.26.x and 2.x.
+
+## Running a single GRW config (legacy driver)
 
 ```bash
 cd inverse_heat_score_grw

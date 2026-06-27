@@ -78,6 +78,9 @@ from invheat_grw.metrics import compute_wasserstein
 from scipy import sparse
 from scipy.sparse.linalg import spsolve
 
+# numpy>=2.0 renamed np.trapz -> np.trapezoid (np.trapz removed in 2.x).
+_trapz = getattr(np, "trapezoid", None) or getattr(np, "trapz")  # type: ignore[attr-defined]
+
 # ---------------------------------------------------------------------------
 # Config paths
 # ---------------------------------------------------------------------------
@@ -173,11 +176,7 @@ def build_varcoeff_operator(
         + sparse.diags(diag_lower, -1, shape=(N, N))
     ).tocsr()
 
-    return L
-
-
-# ---------------------------------------------------------------------------
-# Crank-Nicolson forward solver
+    return L  # type: ignore[return-value]
 # ---------------------------------------------------------------------------
 def solve_varcoeff_forward(
     u0: np.ndarray,
@@ -246,7 +245,7 @@ def numerical_oracle_score(
     dx = x_grid[1] - x_grid[0]
     if smooth_sigma is None:
         smooth_sigma = 3.0 * dx
-    scores, _ = smoothed_log_score(positions, u_fwd, x_grid, smooth_sigma, epsilon)
+    scores, _ = smoothed_log_score(positions, u_fwd, x_grid, smooth_sigma, epsilon)  # type: ignore[arg-type]
     return scores
 
 
@@ -459,7 +458,7 @@ def varcoeff_tikhonov(
     M = np.zeros((N, N))
     for j in range(N):
         e_j = B @ np.eye(N)[:, j]
-        M[:, j] = spsolve(A, e_j)
+        M[:, j] = spsolve(A, e_j)  # type: ignore[call-overload, assignment]
 
     # Raise M to n_steps power via matrix exponentiation
     F = np.linalg.matrix_power(M, n_steps)   # F: u0 -> u_T
@@ -545,8 +544,8 @@ def compute_result_metrics(
     linf_err = float(np.max(np.abs(diff)))
 
     # Mass
-    mass_cand = float(np.trapz(cand, x_grid))
-    mass_true = float(np.trapz(true_u0_field, x_grid))
+    mass_cand = float(_trapz(cand, x_grid))  # type: ignore[attr-defined]
+    mass_true = float(_trapz(true_u0_field, x_grid))  # type: ignore[attr-defined]
 
     # Total variation
     tv = float(np.sum(np.abs(np.diff(cand))) * dx)

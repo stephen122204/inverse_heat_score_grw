@@ -1,0 +1,38 @@
+======================================================================
+VARIABLE-COEFFICIENT HEAT EXPERIMENT SUMMARY
+Timestamp : 20260627_082333
+n_grid    : 400
+N_particles: 10000
+======================================================================
+
+Case: VB_beta05
+  variable_oracle_deterministic                 rel_l2=0.0083  fwd_l2=0.0053  t=0.1s
+  variable_estimated_smoothed_log_bw4           rel_l2=0.0127  fwd_l2=0.0081  t=3.3s
+  variable_estimated_smoothed_log_bw6           rel_l2=0.0270  fwd_l2=0.0174  t=3.3s
+  variable_estimated_fd_grid_ratio_bw4          rel_l2=0.0568  fwd_l2=0.0069  t=3.2s
+  varcoeff_tikhonov_best                        rel_l2=0.0000  fwd_l2=nan  t=0.3s
+
+Case: VB_beta09
+  variable_oracle_deterministic                 rel_l2=0.0084  fwd_l2=0.0051  t=0.1s
+  variable_estimated_smoothed_log_bw4           rel_l2=0.0145  fwd_l2=0.0080  t=3.6s
+  variable_estimated_smoothed_log_bw6           rel_l2=0.0277  fwd_l2=0.0172  t=3.5s
+  variable_estimated_fd_grid_ratio_bw4          rel_l2=0.1469  fwd_l2=0.0091  t=3.2s
+  varcoeff_tikhonov_best                        rel_l2=0.0000  fwd_l2=nan  t=0.3s
+
+Case: VH_beta05
+  variable_oracle_deterministic                 rel_l2=0.0201  fwd_l2=0.0072  t=0.0s
+  variable_estimated_smoothed_log_bw4           rel_l2=0.0794  fwd_l2=0.0133  t=3.2s
+  variable_estimated_smoothed_log_bw6           rel_l2=0.0870  fwd_l2=0.0262  t=3.3s
+  variable_estimated_fd_grid_ratio_bw4          rel_l2=0.0917  fwd_l2=0.0099  t=3.3s
+  varcoeff_tikhonov_best                        rel_l2=0.0054  fwd_l2=nan  t=0.3s
+
+Case: VH_beta09
+  variable_oracle_deterministic                 rel_l2=0.0204  fwd_l2=0.0068  t=0.1s
+  variable_estimated_smoothed_log_bw4           rel_l2=0.0877  fwd_l2=0.0122  t=3.4s
+  variable_estimated_smoothed_log_bw6           rel_l2=0.0897  fwd_l2=0.0244  t=3.5s
+  variable_estimated_fd_grid_ratio_bw4          rel_l2=0.2508  fwd_l2=0.0130  t=3.4s
+  varcoeff_tikhonov_best                        rel_l2=0.0055  fwd_l2=nan  t=0.3s
+
+======================================================================
+VERDICT: CONDITIONAL GO — partial success across beta/IC combinations
+======================================================================

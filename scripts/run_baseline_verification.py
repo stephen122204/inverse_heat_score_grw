@@ -881,9 +881,9 @@ def _plot_best_comparison(best_df: pd.DataFrame, save_path: Path) -> None:
     vals_spectral = best_df["best_spectral_rel_L2"].values.astype(float)
     vals_tik      = best_df["best_tikhonov_rel_L2"].values.astype(float)
 
-    bars_p = ax.bar(x - width, vals_particle, width, label="particle det_raw", color="steelblue", alpha=0.85)
-    bars_s = ax.bar(x,         vals_spectral, width, label="best spectral",    color="darkorange", alpha=0.85)
-    bars_t = ax.bar(x + width, vals_tik,      width, label="best Tikhonov",    color="forestgreen", alpha=0.85)
+    bars_p = ax.bar(x - width, vals_particle, width, label="particle det_raw", color="steelblue", alpha=0.85)  # type: ignore[arg-type]
+    bars_s = ax.bar(x,         vals_spectral, width, label="best spectral",    color="darkorange", alpha=0.85)  # type: ignore[arg-type]
+    bars_t = ax.bar(x + width, vals_tik,      width, label="best Tikhonov",    color="forestgreen", alpha=0.85)  # type: ignore[arg-type]
 
     # Annotate bars with values
     for bar in [*bars_p, *bars_s, *bars_t]:

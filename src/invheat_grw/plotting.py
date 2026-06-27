@@ -165,7 +165,7 @@ def _plot_step_snapshots(
     ax.plot(x, true_u0, "k-", lw=2, label="True u₀", zorder=10)
     ax.plot(x, observed_final, "k--", lw=1, alpha=0.5, label="Observed u(T)")
 
-    cmap = plt.cm.plasma
+    cmap = plt.cm.plasma  # type: ignore[attr-defined]
     for i, step in enumerate(steps):
         color = cmap(i / max(len(steps) - 1, 1))
         ax.plot(x, snaps[step], color=color, lw=1.2, label=f"Step {step}")

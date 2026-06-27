@@ -761,6 +761,8 @@ def make_summary(
         best_dp_recon = ""
         best_dp_bw = float("nan")
         best_dp_n_grid = None
+        best_dp_step0: float = float("nan")
+        best_dp_fwd: float = float("nan")
         if len(dp) > 0:
             valid_dp = dp[np.isfinite(dp["relative_l2"])]
             if len(valid_dp) > 0:

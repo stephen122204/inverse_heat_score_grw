@@ -89,7 +89,7 @@ def save_arrays(
     for name, res in results.items():
         arrays[f"candidate_{name}"] = res.candidate
 
-    np.savez(out_dir / "arrays.npz", **arrays)
+    np.savez(out_dir / "arrays.npz", **arrays)  # type: ignore[arg-type]
 
     # Also save as CSV for easy inspection
     df = pd.DataFrame({"x": x_grid, "true_u0": true_u0, "observed_final": observed_final})

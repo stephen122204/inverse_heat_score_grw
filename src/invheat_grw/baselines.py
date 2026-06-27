@@ -119,7 +119,7 @@ def spectral_cutoff_inverse(
             k_cut = float("inf")
 
     # Forward DCT-II (same as metrics.forward_heat_solve_dct)
-    c = dct(observed, type=2, norm="ortho")
+    c: np.ndarray = dct(observed, type=2, norm="ortho")  # type: ignore[assignment]
 
     # Wavenumber for mode n: k_n = n * pi / L
     n_modes = np.arange(N)
@@ -136,7 +136,7 @@ def spectral_cutoff_inverse(
     max_inv = float(np.max(inv_multiplier[keep])) if n_kept > 0 else 0.0
 
     c_inv = c * inv_multiplier
-    candidate = idct(c_inv, type=2, norm="ortho")
+    candidate: np.ndarray = idct(c_inv, type=2, norm="ortho")  # type: ignore[assignment]
 
     return SpectralCutoffResult(
         candidate=candidate,
@@ -188,7 +188,7 @@ def tikhonov_inverse(
     N = len(observed)
     L = float(x_grid[-1] - x_grid[0])
 
-    c = dct(observed, type=2, norm="ortho")
+    c: np.ndarray = dct(observed, type=2, norm="ortho")  # type: ignore[assignment]
 
     n_modes = np.arange(N)
     k_n = n_modes * math.pi / L
@@ -198,7 +198,7 @@ def tikhonov_inverse(
     tik_filter = A_n / (A_n ** 2 + lam)
 
     c_inv = c * tik_filter
-    candidate = idct(c_inv, type=2, norm="ortho")
+    candidate: np.ndarray = idct(c_inv, type=2, norm="ortho")  # type: ignore[assignment]
 
     return TikhonovResult(
         candidate=candidate,

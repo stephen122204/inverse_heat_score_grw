@@ -1,0 +1,55 @@
+======================================================================
+VALIDATION STAGE SUMMARY
+Generated: 2026-06-27 08:29:09
+n_grid=400  epsilon=1e-08
+======================================================================
+
+TASK 1 — N-CONVERGENCE (Test B, Gaussian, T=0.15, clean data)
+----------------------------------------------------------------------
+  tikhonov_best                 : rel_L2=0.00103  (lambda/nd=1e-04)
+  spectral_best                 : rel_L2=0.00116  (lambda/nd=1e-02)
+  Grad-glob plateau             : rel_L2=0.17500
+
+  Method                  N=  5000  N= 10000
+  ------------------------------------------
+  oracle                   0.00694   0.00694(-0.1%)
+  smoothed_log_bw4         0.01220   0.01197(-1.8%)
+  smoothed_log_bw6         0.02556   0.02556(-0.0%)
+  fd_ratio_bw4             0.02311   0.01327(-42.6%)
+
+  Q1: N=10000 rel_L2=0.01197 vs N=5000 rel_L2=0.01220 (-1.8%) → PLATEAU (bandwidth bias dominates)
+  Q2: Best estimated rel_L2 = 0.01197, oracle = 0.00694, ratio = 1.73×
+      → STRONG GO: estimated/oracle < 2×
+
+TASK 2 — NOISE ROBUSTNESS (Test B, Gaussian, T=0.15)
+----------------------------------------------------------------------
+  Method                  eta=0.000  eta=0.001  eta=0.005  eta=0.010
+  ----------------------------------------------------------------------
+  smoothed_log_bw4          0.01197    0.02802    0.11014    0.19699
+  smoothed_log_bw6          0.02556    0.02565    0.02679    0.02987
+  fd_ratio_bw4              0.01327    0.45507    0.49518    0.50411
+  tikhonov_best             0.00103    0.00295    0.01341    0.01862
+  tikhonov_fixed            0.00103    0.00952    0.04800    0.09616
+  spectral_best             0.00116    0.00688    0.03369    0.06732
+
+  Q3: Noisy observations (smoothed_log bw=4):
+      eta=0.001 mean rel_L2 = 0.02802
+      eta=0.005 mean rel_L2 = 0.11014
+      eta=0.010 mean rel_L2 = 0.19699
+      Q3 RESULT: eta=0.001 is stable → bandwidth acts as regularizer ✓
+  Q4: eta=0.001: particle/tikhonov = 0.02802/0.00295 = 9.51×
+  Q4: eta=0.005: particle/tikhonov = 0.11014/0.01341 = 8.21×
+  Q4: eta=0.010: particle/tikhonov = 0.19699/0.01862 = 10.58×
+
+DECISION
+----------------------------------------------------------------------
+  VERDICT: STRONG GO
+  REASON:  estimated/oracle = 1.73× (< 2×) AND eta=0.001 stable AND eta=0.005 ok
+
+RECOMMENDED NEXT STEP
+----------------------------------------------------------------------
+  → Write bandwidth-as-cutoff theory section.
+    h_opt ~ sqrt(2*alpha*T) (diffusion length scale).
+    Then proceed to variable-coefficient heat equation.
+
+======================================================================

@@ -191,10 +191,10 @@ def run_case(
     u0_true: np.ndarray,
     out_dir: Path,
     n_particles: int,
-) -> list[dict]:
+) -> tuple[list[dict], list[float], int, float, float]:
     """
     Run oracle + smoothed_log bw sweep for one beta value.
-    Returns list of metric dicts.
+    Returns (rows, bw_rel_l2, best_bw, best_rel_l2, oracle_rel_l2).
     """
     case_id = f"VH_beta{'05' if abs(beta - 0.5) < 0.01 else '09'}"
     beta_tag = "beta05" if abs(beta - 0.5) < 0.01 else "beta09"
@@ -477,7 +477,7 @@ def main() -> None:
         lines.append("")
         lines.extend(analyze_results(
             "VH_beta09", BANDWIDTH_FACTORS, bw_rl2_09,
-            best_bw_09, best_rl2_09, oracle_rl2_09,
+            best_bw_09, best_rl2_09, oracle_rl2_09,  # type: ignore[arg-type]
         ))
 
     # Overall verdict

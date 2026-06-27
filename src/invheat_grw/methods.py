@@ -63,6 +63,9 @@ from .scores import (
     smoothed_log_score,
 )
 
+# numpy>=2.0 renamed np.trapz -> np.trapezoid (np.trapz removed in 2.x).
+_trapz = getattr(np, "trapezoid", None) or getattr(np, "trapz")  # type: ignore[attr-defined]
+
 
 # ---------------------------------------------------------------------------
 # Result container
@@ -167,7 +170,7 @@ def _quantile_init_particles(
     """
     u_pos = np.maximum(u_obs, 0.0)
     dx = x_grid[1] - x_grid[0]
-    total_mass = float(np.trapz(u_pos, x_grid))
+    total_mass = float(_trapz(u_pos, x_grid))  # type: ignore[attr-defined]
     if total_mass <= 0.0:
         # Fallback: uniform placement
         positions = np.linspace(x_grid[0], x_grid[-1], n_particles)
@@ -1096,7 +1099,7 @@ def run_density_particle_estimated_score_deterministic(
         result.epsilon_actual_per_step.append(epsilon_actual)
 
         # --- Per-step mass tracking ---
-        mass_recon = float(np.trapz(u_recon, x_grid))
+        mass_recon = float(_trapz(u_recon, x_grid))  # type: ignore[attr-defined]
         result.mass_per_step.append(mass_recon)
 
         # --- Denominator diagnostic: count grid pts where u < epsilon_actual ---

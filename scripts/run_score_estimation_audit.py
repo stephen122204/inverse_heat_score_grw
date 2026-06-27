@@ -426,7 +426,7 @@ def run_tikhonov_best_cell(test: str, cfg: Config, n_grid: int) -> dict:
             continue
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
-            tm = compute_metrics(tr, true_u, u_obs, x_grid, cfg_r)
+            tm = compute_metrics(tr, true_u, u_obs, x_grid, cfg_r)  # type: ignore[arg-type]
         if _safe(tm.relative_l2) < best_rl2:
             best_rl2 = _safe(tm.relative_l2)
             best_cand = tr.candidate.copy()
@@ -457,7 +457,7 @@ def run_tikhonov_best_cell(test: str, cfg: Config, n_grid: int) -> dict:
     fr = _FakeResult(best_cand)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)
-        fm = compute_metrics(fr, true_u, u_obs, x_grid, cfg_r)
+        fm = compute_metrics(fr, true_u, u_obs, x_grid, cfg_r)  # type: ignore[arg-type]
         fwass = compute_wasserstein(best_cand, true_u, x_grid)
 
     row = _base_row(test, n_grid, f"tikhonov_lam={best_lam:.0e}", "tikhonov")
@@ -741,8 +741,8 @@ def plot_field_comparison_best(
         if sub_sm.empty:
             return
         best_row = sub_sm.loc[sub_sm["relative_l2"].idxmin()]
-        bw_f = float(best_row["bandwidth_factor"])
-        eps = float(best_row["epsilon"])
+        bw_f = float(best_row["bandwidth_factor"])  # type: ignore[arg-type]
+        eps = float(best_row["epsilon"])  # type: ignore[arg-type]
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
             result = run_density_particle_estimated_score_deterministic(
@@ -755,7 +755,7 @@ def plot_field_comparison_best(
                 save_snapshots=False,
                 score_method=score_method,
             )
-        rl2 = float(best_row["relative_l2"])
+        rl2 = float(best_row["relative_l2"])  # type: ignore[arg-type]
         ax.plot(x_grid, result.candidate,
                 color=color, linestyle="-", linewidth=1.2,
                 label=f"{label} (bw={bw_f:.0f}, ε={eps:.0e}) rl2={rl2:.4f}")
@@ -764,13 +764,13 @@ def plot_field_comparison_best(
     sub_oracle = sub[sub["score_method"] == "oracle"]
     if not sub_oracle.empty:
         best_oc = sub_oracle.loc[sub_oracle["relative_l2"].idxmin()]
-        bw_oc = float(best_oc["bandwidth_factor"])
+        bw_oc = float(best_oc["bandwidth_factor"])  # type: ignore[arg-type]
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
             r_oc = run_density_particle_oracle_score_deterministic(
                 u_obs, x_grid, cfg_r, n_particles,
                 recon_method=RECON_METHOD, bandwidth_factor=bw_oc)
-        oc_rl2 = float(best_oc["relative_l2"])
+        oc_rl2 = float(best_oc["relative_l2"])  # type: ignore[arg-type]
         ax.plot(x_grid, r_oc.candidate,
                 color=COLORS["density_particle_oracle"], linestyle="-", linewidth=2,
                 label=f"oracle (bw={bw_oc:.0f}) rl2={oc_rl2:.4f}")
@@ -792,7 +792,7 @@ def plot_field_comparison_best(
             continue
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
-            tm = compute_metrics(tr, true_u, u_obs, x_grid, cfg_r)
+            tm = compute_metrics(tr, true_u, u_obs, x_grid, cfg_r)  # type: ignore[arg-type]
         if _safe(tm.relative_l2) < best_tik_rl2:
             best_tik_rl2 = _safe(tm.relative_l2)
             best_tik_cand = tr.candidate.copy()

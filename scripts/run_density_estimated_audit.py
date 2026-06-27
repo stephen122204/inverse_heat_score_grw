@@ -555,7 +555,7 @@ def plot_oracle_vs_estimated(df: pd.DataFrame, out_dir: Path) -> None:
         dp_est = sub_max[sub_max["method_type"] == "density_particle_estimated"].copy()
         if len(dp_est) > 0:
             eps_sorted = sorted(dp_est["epsilon"].unique())
-            colors_est = plt.cm.tab10(np.linspace(0.15, 0.85, len(eps_sorted)))
+            colors_est = plt.cm.tab10(np.linspace(0.15, 0.85, len(eps_sorted)))  # type: ignore[attr-defined]
             for i, eps_val in enumerate(eps_sorted):
                 sub_eps = dp_est[dp_est["epsilon"] == eps_val]
                 best_eps = (sub_eps[np.isfinite(sub_eps["relative_l2"])]
@@ -859,27 +859,27 @@ def plot_field_comparison(
         return
     best_est_idx = dp_est["relative_l2"].idxmin()
     best_est = dp_est.loc[best_est_idx]
-    est_np = int(best_est["n_particles"])
-    est_bw = float(best_est["bandwidth_factor"])
-    est_eps = float(best_est["epsilon"])
-    est_rl2 = float(best_est["relative_l2"])
+    est_np = int(best_est["n_particles"])  # type: ignore[arg-type]
+    est_bw = float(best_est["bandwidth_factor"])  # type: ignore[arg-type]
+    est_eps = float(best_est["epsilon"])  # type: ignore[arg-type]
+    est_rl2 = float(best_est["relative_l2"])  # type: ignore[arg-type]
 
     # Best oracle
     dp_or = sub_max[(sub_max["method_type"] == "density_particle_oracle") &
                     np.isfinite(sub_max["relative_l2"])]
     if len(dp_or) > 0:
         best_or_idx = dp_or["relative_l2"].idxmin()
-        or_np = int(dp_or.loc[best_or_idx, "n_particles"])
-        or_bw = float(dp_or.loc[best_or_idx, "bandwidth_factor"])
-        or_rl2 = float(dp_or.loc[best_or_idx, "relative_l2"])
+        or_np = int(dp_or.loc[best_or_idx, "n_particles"])  # type: ignore[arg-type]
+        or_bw = float(dp_or.loc[best_or_idx, "bandwidth_factor"])  # type: ignore[arg-type]
+        or_rl2 = float(dp_or.loc[best_or_idx, "relative_l2"])  # type: ignore[arg-type]
     else:
         or_np, or_bw, or_rl2 = est_np, est_bw, float("nan")
 
     # Best gradient-glob
     gg_sub = sub_max[(sub_max["method_type"] == "gradient_glob_oracle") &
                      np.isfinite(sub_max["relative_l2"])]
-    gg_globs = int(gg_sub.loc[gg_sub["relative_l2"].idxmin(), "globs_per_jump"]) \
-               if len(gg_sub) > 0 else GLOB_VALUES[-1]
+    gg_globs = (int(gg_sub.loc[gg_sub["relative_l2"].idxmin(), "globs_per_jump"])  # type: ignore[arg-type]
+                if len(gg_sub) > 0 else GLOB_VALUES[-1])
 
     # Recompute candidates
     with warnings.catch_warnings():
@@ -1029,6 +1029,10 @@ def make_summary(
         best_est_eps = float("nan")
         best_est_bw = float("nan")
         best_est_np = None
+        best_est_step0: float = float("nan")
+        best_est_fwd: float = float("nan")
+        best_est_score_L2: float = float("nan")
+        best_est_mean_score_L2: float = float("nan")
         n_failures = 0
 
         if len(sub_max[sub_max["method_type"] == "density_particle_estimated"]) > 0:

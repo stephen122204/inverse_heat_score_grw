@@ -1,0 +1,106 @@
+========================================================================
+REPRESENTATION AUDIT SUMMARY
+Output directory: outputs/representation_audit_20260627_094153
+Generated: 2026-06-27 09:42:19
+========================================================================
+
+GOAL: Determine if gradient-glob oracle plateau is due to
+representation mismatch (carrying u_x with field score s_u).
+
+Known gradient-glob oracle plateaus (from convergence study):
+  Test B: 0.175
+  Test H: 0.239
+  Test Z: 0.155
+
+------------------------------------------------------------
+TEST B
+------------------------------------------------------------
+  Best density-particle oracle : rel_L2 = 0.000683
+    config: n_particles=20000, n_grid=800, recon=kde, bw_factor=2.0
+    step-zero recon error     : 0.000581
+    forward consistency L2    : 2.477447e-04
+  Best gradient-glob oracle   : rel_L2 = 0.174826
+  Grad-glob plateau (ref)     : 0.175
+  Tikhonov best               : rel_L2 = 0.000674
+  Spectral best               : rel_L2 = 0.000759
+  density_oracle / grad_glob_plateau : 0.0039
+  density_oracle / grad_glob_oracle  : 0.0039
+  density_oracle / tikhonov_best     : 1.0122
+  Convergence with n_particles: first=0.00482, last=0.00068, CONVERGING
+  DIAGNOSIS: step-zero reconstruction error is DOMINANT
+    => reconstruction error bottleneck, not backward dynamics
+  VERDICT: STRONG GO
+
+------------------------------------------------------------
+TEST H
+------------------------------------------------------------
+  Best density-particle oracle : rel_L2 = 0.004326
+    config: n_particles=5000, n_grid=800, recon=kde, bw_factor=1.0
+    step-zero recon error     : 0.004552
+    forward consistency L2    : 2.850189e-04
+  Best gradient-glob oracle   : rel_L2 = 0.239033
+  Grad-glob plateau (ref)     : 0.239
+  Tikhonov best               : rel_L2 = 0.002903
+  Spectral best               : rel_L2 = 0.006132
+  density_oracle / grad_glob_plateau : 0.0181
+  density_oracle / grad_glob_oracle  : 0.0181
+  density_oracle / tikhonov_best     : 1.4905
+  Convergence with n_particles: first=0.00491, last=0.00434, CONVERGING
+  DIAGNOSIS: step-zero reconstruction error is DOMINANT
+    => reconstruction error bottleneck, not backward dynamics
+  VERDICT: STRONG GO
+
+------------------------------------------------------------
+TEST Z
+------------------------------------------------------------
+  Best density-particle oracle : rel_L2 = 0.000794
+    config: n_particles=20000, n_grid=800, recon=kde, bw_factor=1.0
+    step-zero recon error     : 0.000693
+    forward consistency L2    : 1.988774e-04
+  Best gradient-glob oracle   : rel_L2 = 0.154637
+  Grad-glob plateau (ref)     : 0.155
+  Tikhonov best               : rel_L2 = 0.000320
+  Spectral best               : rel_L2 = 0.000434
+  density_oracle / grad_glob_plateau : 0.0051
+  density_oracle / grad_glob_oracle  : 0.0051
+  density_oracle / tikhonov_best     : 2.4793
+  Convergence with n_particles: first=0.00520, last=0.00079, CONVERGING
+  DIAGNOSIS: step-zero reconstruction error is DOMINANT
+    => reconstruction error bottleneck, not backward dynamics
+  VERDICT: STRONG GO
+
+========================================================================
+OVERALL VERDICT
+========================================================================
+  Test B: STRONG GO
+  Test H: STRONG GO
+  Test Z: STRONG GO
+
+METHODOLOGICAL INTERPRETATION:
+
+Formulation A (gradient-glob + field score):
+  Globs carry u_x. Score drift is alpha * partial_x log u.
+  Continuity eq. for u_x-particles: q_tau = -alpha * partial_x(q^2/u).
+  This is NOT the gradient backward heat equation (q_tau = -alpha*q_xx).
+  => representation mismatch.
+
+Formulation B (density-particle + field score):
+  Particles carry u. Score drift is alpha * partial_x log u.
+  Continuity eq. for u-particles: u_tau = -alpha * u_xx.
+  => representation consistent.
+
+RECOMMENDATION: STRONG GO — density-particle oracle clearly breaks
+the gradient-glob plateau.  Implement estimated density-particle score
+(Formulation B-estimated) as the main new method.
+
+Next steps:
+  1. Implement run_density_particle_estimated_score_deterministic
+     with grid-ratio epsilon score on the reconstructed density.
+  2. Run noise-robustness study at best (n_grid, n_particles).
+  3. Future work: sign-split gradient-native (Formulation C).
+
+NOTE: Density-particle oracle is NOT 'GRW' in the gradient-glob sense.
+  Gradient-glob GRW: representation-native to gradients (u_x).
+  Density-particle: representation-consistent with field-score reverse
+  diffusion, but departs from GRW gradient representation.
+  Beating gradient-glob does not imply beating Tikhonov/spectral.

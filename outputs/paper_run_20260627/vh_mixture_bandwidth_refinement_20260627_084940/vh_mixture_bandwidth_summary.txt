@@ -1,0 +1,42 @@
+======================================================================
+VH MIXTURE BANDWIDTH REFINEMENT — FINAL PRE-WRITEUP EXPERIMENT
+Timestamp     : 20260627_084940
+n_grid        : 400
+N_particles   : 10000
+bandwidth_factors: [2, 3, 4, 5, 6]
+epsilon       : 1e-08
+score_method  : smoothed_log
+alpha0        : 0.01  T=0.15  dt=0.001
+======================================================================
+
+  Case: VH_beta05
+    Oracle (this run) : 0.0201
+    Oracle (audit)    : 0.0201
+    Tikhonov (audit)  : 0.0055
+    Audit sl_bw4      : 0.0794
+
+    Bandwidth sweep (smoothed_log, epsilon=1e-8):
+      bw=2  rel_L2=0.7341
+      bw=3  rel_L2=0.1063
+      bw=4  rel_L2=0.0794
+      bw=5  rel_L2=0.0780  <-- BEST
+      bw=6  rel_L2=0.0870
+
+  1. Best bandwidth factor     : 5
+  2. Best rel_L2               : 0.0780
+  3. Improves over audit bw=4  : YES  (+1.8%)
+  4. Any bw < 0.060            : NO
+  5. All bw >= 0.070           : YES
+  6. Curve shape               : U-SHAPED (clear interior minimum)
+  7. Mixture limitation remains: YES — mixture gap remains (3.9× oracle, 14.2× Tikhonov)
+
+======================================================================
+DECISION
+  Best rel_L2 across all runs : 0.0780
+  NO BREAKTHROUGH — all bandwidths remain >= 0.070.
+  Keep existing bw=4 result. Explicitly label multimodal score
+  estimation as a limitation in the paper. Do NOT continue tuning.
+
+STOP CONDITION: No further tuning. Proceed to paper writeup.
+  Future work: adaptive bandwidth, N=50k+, mixture-aware KDE.
+======================================================================
