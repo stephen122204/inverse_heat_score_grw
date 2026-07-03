@@ -1,0 +1,197 @@
+"""
+make_new_figures.py — Build the three NEW paper figures (Tasks 4.2, 4.3, 4.4).
+
+All data come from real runs:
+  4.2 fig_representation_failure_visual : Test B exact-score density-particle
+        (N=5000, bw4, E2~0.0069) vs gradient-glob (E2~0.175), reproduced inline
+        — the SAME runs behind Table 1.
+  4.3 fig_noise_robustness_bands        : reads the latest noise_study_25seeds_*
+        arrays; mean line + shaded +/-1 std band for smoothed-log bw4, bw6, and
+        optimally-tuned Tikhonov.
+  4.4 fig_nonsmooth_reconstruction      : reads the latest nonsmooth_case_* arrays;
+        tent true u0, best smoothed-log reconstruction, Tikhonov.
+
+Nothing here hardcodes a numeric result; legends print E2 read from the data.
+"""
+
+from __future__ import annotations
+
+import glob
+import sys
+import warnings
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parent
+sys.path.insert(0, str(REPO / "src"))
+
+import numpy as np
+import copy
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import pandas as pd
+
+from invheat_grw.config import load_config, Config
+from invheat_grw.fields import make_grid, true_u0, observed_final
+from invheat_grw.methods import (
+    run_oracle_score_deterministic,
+    run_density_particle_oracle_score_deterministic,
+)
+
+OUT = REPO / "figures"
+OUT.mkdir(exist_ok=True)
+plt.rcParams.update({"font.size": 10, "axes.titlesize": 11, "axes.labelsize": 10,
+                     "legend.fontsize": 8, "figure.dpi": 160})
+
+
+def patch(cfg: Config, **ov) -> Config:
+    cfg = copy.deepcopy(cfg)
+    for k, v in ov.items():
+        obj = cfg
+        parts = k.split(".")
+        for p in parts[:-1]:
+            obj = getattr(obj, p)
+        setattr(obj, parts[-1], v)
+    return cfg
+
+
+def save(fig, stem):
+    fig.savefig(OUT / f"{stem}.pdf")
+    fig.savefig(OUT / f"{stem}.png", dpi=220)
+    plt.close(fig)
+    print(f"  wrote figures/{stem}.pdf")
+
+
+def latest(pattern):
+    hits = glob.glob(str(REPO / "outputs" / pattern))
+    dirs = [Path(h) for h in hits if Path(h).is_dir()]
+    return max(dirs, key=lambda p: p.name) if dirs else None
+
+
+# ---------------------------------------------------------------------------
+# 4.2 — gradient representation failure, shown visually (Test B)
+# ---------------------------------------------------------------------------
+def fig_representation_failure_visual():
+    base = load_config(str(REPO / "configs" / "gaussian_base.yaml"))
+    cfg = patch(base, **{"heat.T": 0.15, "initial_condition.sigma0": 0.08,
+                         "domain.n_grid": 400})
+    x = make_grid(cfg)
+    u0 = true_u0(x, cfg)
+    g = observed_final(x, cfg)
+    dx = float(x[1] - x[0])
+    u0n = float(np.sqrt(dx * np.sum(u0 ** 2)))
+
+    def e2(c):
+        return float(np.sqrt(dx * np.sum((c - u0) ** 2))) / u0n
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        # density-particle carrying u (the representation that matches)
+        dp = run_density_particle_oracle_score_deterministic(
+            g, x, cfg, 5000, recon_method="kde", bandwidth_factor=4.0).candidate
+        # gradient-glob carrying q = u_x (the representation that fails)
+        cfg_gg = patch(cfg, **{"grw.gradient_globs_per_jump": 80})
+        gg = run_oracle_score_deterministic(
+            g, x, cfg_gg, np.random.default_rng(42)).candidate
+
+    e2_dp, e2_gg = e2(dp), e2(gg)
+    print(f"  [4.2] density E2={e2_dp:.4f}  gradient-glob E2={e2_gg:.4f}")
+
+    fig, ax = plt.subplots(figsize=(6.6, 4.2))
+    ax.plot(x, u0, "k-", lw=2.2, label=r"true $u_0$", zorder=5)
+    ax.plot(x, dp, "-", color="tab:red", lw=1.8,
+            label=rf"density particles, carry $u$ (exact score), $E_2={e2_dp:.4f}$")
+    ax.plot(x, gg, "-", color="tab:purple", lw=1.8,
+            label=rf"gradient globs, carry $q=u_x$ (exact score), $E_2={e2_gg:.3f}$")
+    ax.plot(x, g, "--", color="0.5", lw=1.1, alpha=0.8,
+            label=r"observed $g=u(\cdot,T)$")
+    ax.set_xlabel("$x$")
+    ax.set_ylabel("$u$")
+    ax.grid(True, alpha=0.25)
+    ax.legend(frameon=False, loc="upper right")
+    fig.tight_layout()
+    save(fig, "fig_representation_failure_visual")
+
+
+# ---------------------------------------------------------------------------
+# 4.3 — noise study with error bands (mean +/- 1 std)
+# ---------------------------------------------------------------------------
+def fig_noise_robustness_bands():
+    d = latest("noise_study_25seeds_*")
+    if d is None:
+        print("  [skip 4.3] no noise_study_25seeds_* dir"); return
+    agg = pd.read_csv(d / "noise_study_summary.csv")
+    series = [
+        ("smoothed_log_bw4", "smoothed-log, bw=4", "tab:blue", "o", "-"),
+        ("smoothed_log_bw6", "smoothed-log, bw=6", "tab:cyan", "s", "-"),
+        ("tikhonov_optimal", "optimally-tuned Tikhonov", "tab:green", "^", "--"),
+    ]
+    fig, ax = plt.subplots(figsize=(6.6, 4.2))
+    for key, lbl, col, mk, ls in series:
+        sub = agg[agg.method == key].sort_values("eta")
+        eta = sub.eta.to_numpy()
+        mean = sub["mean"].to_numpy()
+        std = sub["std"].to_numpy()
+        ax.plot(eta, mean, marker=mk, ls=ls, color=col, label=lbl, lw=1.8)
+        ax.fill_between(eta, np.maximum(mean - std, 1e-6), mean + std,
+                        color=col, alpha=0.18, linewidth=0)
+    ax.set_yscale("log")
+    ax.set_xlabel(r"relative observation noise $\eta$")
+    ax.set_ylabel(r"relative $L^2$ error $E_2$")
+    ax.grid(True, which="both", alpha=0.25)
+    ax.legend(frameon=False)
+    fig.tight_layout()
+    save(fig, "fig_noise_robustness_bands")
+
+
+# ---------------------------------------------------------------------------
+# 4.4 — non-smooth (tent) reconstruction vs truth
+# ---------------------------------------------------------------------------
+def fig_nonsmooth_reconstruction():
+    d = latest("nonsmooth_case_*")
+    if d is None:
+        print("  [skip 4.4] no nonsmooth_case_* dir"); return
+    arr = np.load(d / "nonsmooth_arrays.npz")
+    met = pd.read_csv(d / "nonsmooth_metrics.csv")
+    case = "tent"
+    x = arr[f"{case}__x"]
+    u0 = arr[f"{case}__u0"]
+
+    def e2_of(method):
+        r = met[(met.case == case) & (met.method == method)]
+        return float(r.E2.iloc[0]) if not r.empty else float("nan")
+
+    # best smoothed-log bw for tent
+    best_bw = int(met[(met.case == case) & (met.method == "E_fwd_best_smoothed_log")].bw.iloc[0])
+    sl_key = f"{case}__smoothed_log_bw{best_bw}"
+    sl = arr[sl_key]
+    tik = arr[f"{case}__tikhonov_optimal"]
+    e2_sl = e2_of(f"smoothed_log_bw{best_bw}")
+    e2_tik = e2_of("tikhonov_optimal")
+
+    fig, ax = plt.subplots(figsize=(6.6, 4.2))
+    ax.plot(x, u0, "k-", lw=2.2, label=r"true $u_0$ (tent)", zorder=5)
+    ax.plot(x, sl, "-", color="tab:blue", lw=1.8,
+            label=rf"smoothed-log, bw={best_bw}, $E_2={e2_sl:.3f}$")
+    ax.plot(x, tik, "--", color="tab:green", lw=1.6,
+            label=rf"optimally-tuned Tikhonov, $E_2={e2_tik:.3f}$")
+    ax.set_xlabel("$x$")
+    ax.set_ylabel("$u$")
+    ax.grid(True, alpha=0.25)
+    ax.legend(frameon=False, loc="upper right")
+    fig.tight_layout()
+    save(fig, "fig_nonsmooth_reconstruction")
+
+
+def main():
+    print("[fig] 4.2 representation_failure_visual")
+    fig_representation_failure_visual()
+    print("[fig] 4.3 noise_robustness_bands")
+    fig_noise_robustness_bands()
+    print("[fig] 4.4 nonsmooth_reconstruction")
+    fig_nonsmooth_reconstruction()
+    print("done.")
+
+
+if __name__ == "__main__":
+    main()

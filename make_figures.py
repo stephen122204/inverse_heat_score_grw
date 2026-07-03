@@ -65,6 +65,25 @@ plt.rcParams.update({
 GAUSS_CFG = REPO / "configs" / "gaussian_base.yaml"
 MIX_CFG = REPO / "configs" / "gaussian_mixture.yaml"
 
+# Unified color key (one method = one color in every figure):
+#   truth               black       observed field      gray dashed
+#   smoothed-log        tab:blue    (bw=6 variant       tab:cyan)
+#   grid-ratio          tab:orange  Tikhonov            tab:green
+#   exact-score curves/reference lines  tab:red
+#   gradient-glob       tab:purple  naive backward walk tab:brown
+# Test cases carry markers/linestyles, not colors: B=o solid, H=s dashed, Z=^ dotted.
+C_TRUTH = "black"
+C_OBS = "0.5"
+C_SL = "tab:blue"
+C_SL6 = "tab:cyan"
+C_FD = "tab:orange"
+C_TIK = "tab:green"
+C_EXACT = "tab:red"
+C_GLOB = "tab:purple"
+C_NAIVE = "tab:brown"
+TEST_MARKER = {"B": "o", "H": "s", "Z": "^"}
+TEST_LS = {"B": "-", "H": "--", "Z": ":"}
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -120,11 +139,10 @@ def fig_naive():
         uT, x, cfg, n_particles=5000, recon_method="kde", bandwidth_factor=4.0).candidate
 
     fig, ax = plt.subplots(figsize=(6.4, 4.0))
-    ax.plot(x, u0, label=r"true $u_0$", lw=2)
-    ax.plot(x, uT, "--", label=r"observed $u_T$", lw=1.8)
-    ax.plot(x, naive, ":", label="naive backward random walk", lw=2)
-    ax.plot(x, score, "-.", label="score-guided density particles", lw=1.8)
-    ax.set_title("Naive reversal versus score-guided reverse transport (Test B)")
+    ax.plot(x, u0, color=C_TRUTH, label=r"true $u_0$", lw=2)
+    ax.plot(x, uT, "--", color=C_OBS, label=r"observed $u_T$", lw=1.8)
+    ax.plot(x, naive, ":", color=C_NAIVE, label="naive backward random walk", lw=2)
+    ax.plot(x, score, "-.", color=C_EXACT, label="score-guided density particles", lw=1.8)
     ax.set_xlabel("$x$"); ax.set_ylabel("$u$")
     ax.grid(True, alpha=0.25); ax.legend(frameon=False)
     fig.tight_layout(); save(fig, "fig_naive_reversal_score_guided")
@@ -152,11 +170,10 @@ def fig_representation():
         dens.append(float(dp.relative_l2.iloc[0]))
     xp = np.arange(len(tests)); w = 0.36
     fig, ax = plt.subplots(figsize=(6.3, 4.0))
-    ax.bar(xp - w / 2, grad, w, label="gradient globs + field score")
-    ax.bar(xp + w / 2, dens, w, label="density particles + field score (bw=4)")
+    ax.bar(xp - w / 2, grad, w, color=C_GLOB, label="gradient globs + field score")
+    ax.bar(xp + w / 2, dens, w, color=C_EXACT, label="density particles + field score (bw=4)")
     ax.set_yscale("log"); ax.set_xticks(xp); ax.set_xticklabels(tests)
     ax.set_ylabel(r"relative $L^2$ error (log scale)")
-    ax.set_title("Representation audit: gradient-glob plateau vs density-particle oracle")
     ax.grid(True, axis="y", which="both", alpha=0.25)
     for i, v in enumerate(grad):
         ax.text(i - w / 2, v * 1.12, f"{v:.3f}", ha="center", va="bottom", fontsize=8)
@@ -183,7 +200,6 @@ def fig_convergence():
         print("  [skip] representation CSV is single-grid; run the grid x N sweep first")
         return
     tests = ["B", "H", "Z"]
-    colors = {"B": "tab:blue", "H": "tab:orange", "Z": "tab:green"}
     Nmax = int(df.n_particles[df.n_particles > 0].max())
 
     fig, (axA, axB) = plt.subplots(1, 2, figsize=(10.5, 4.2))
@@ -195,15 +211,15 @@ def fig_convergence():
         dp = (df[(df.test == t) & (df.method_type == "density_particle_oracle")
                  & (df.bandwidth_factor == 4.0) & (df.n_particles == Nmax)]
               .groupby("n_grid").relative_l2.mean().sort_index())
-        axA.plot(gg.index, gg.values, "o--", color=colors[t], alpha=0.9,
-                 label=f"{t}: gradient-glob")
-        axA.plot(dp.index, dp.values, "s-", color=colors[t],
-                 label=f"{t}: density oracle")
+        axA.plot(gg.index, gg.values, ls=TEST_LS[t], marker=TEST_MARKER[t],
+                 color=C_GLOB, alpha=0.9, label=f"{t}: gradient-glob")
+        axA.plot(dp.index, dp.values, ls=TEST_LS[t], marker=TEST_MARKER[t],
+                 color=C_EXACT, label=f"{t}: density, exact score")
     axA.set_yscale("log"); axA.set_xscale("log", base=2)
     axA.set_xticks([100, 200, 400, 800]); axA.set_xticklabels([100, 200, 400, 800])
     axA.set_xlabel(r"$n_\mathrm{grid}$ (at $N=%d$)" % Nmax)
     axA.set_ylabel(r"relative $L^2$ error")
-    axA.set_title("(a) refinement vs grid")
+    axA.set_title("(a)", loc="left")
     axA.grid(True, which="both", alpha=0.25); axA.legend(frameon=False, fontsize=7, ncol=1)
 
     # ---- Panel B: vs N at n_grid=400 ----
@@ -212,20 +228,20 @@ def fig_convergence():
                  & (df.bandwidth_factor == 4.0) & (df.n_grid == 400)
                  & (df.n_particles > 0)]
               .groupby("n_particles").relative_l2.mean().sort_index())
-        axB.plot(dp.index, dp.values, "s-", color=colors[t],
-                 label=f"{t}: density oracle")
+        axB.plot(dp.index, dp.values, ls=TEST_LS[t], marker=TEST_MARKER[t],
+                 color=C_EXACT, label=f"{t}: density, exact score")
         gg = df[(df.test == t) & (df.method_type == "gradient_glob_oracle")
                 & (df.n_grid == 400)].relative_l2.mean()
-        axB.axhline(gg, ls="--", color=colors[t], alpha=0.9,
+        axB.axhline(gg, ls=TEST_LS[t], color=C_GLOB, alpha=0.9, lw=1.2,
                     label=f"{t}: gradient-glob ceiling")
+        axB.annotate(t, xy=(0.985, gg), xycoords=("axes fraction", "data"),
+                     ha="right", va="bottom", fontsize=7, color=C_GLOB)
     axB.set_yscale("log"); axB.set_xscale("log")
     axB.set_xlabel(r"$N$ density particles (at $n_\mathrm{grid}=400$)")
     axB.set_ylabel(r"relative $L^2$ error")
-    axB.set_title("(b) refinement vs particle count")
+    axB.set_title("(b)", loc="left")
     axB.grid(True, which="both", alpha=0.25); axB.legend(frameon=False, fontsize=7)
 
-    fig.suptitle("Representation ceiling is structural: gradient-glob pinned under refinement, "
-                 "density oracle far below", fontsize=11)
     fig.tight_layout(); save(fig, "fig_representation_convergence")
 
 
@@ -245,14 +261,14 @@ def fig_density_loop():
         save_snapshots=True)
     snaps = res.step_snapshots
     fig, ax = plt.subplots(figsize=(6.6, 4.0))
-    ax.plot(x, u0, "k-", lw=2, label=r"true $u_0$")
-    ax.plot(x, uT, "k--", lw=1.2, alpha=0.5, label=r"observed $u_T$")
+    ax.plot(x, u0, color=C_TRUTH, lw=2, label=r"true $u_0$")
+    ax.plot(x, uT, "--", color=C_OBS, lw=1.2, label=r"observed $u_T$")
     keys = sorted(snaps.keys())
     pick = [keys[0], keys[len(keys) // 2], keys[-1]]
-    for k in pick:
+    shades = [plt.cm.Blues(v) for v in (0.45, 0.65, 0.95)]
+    for k, col in zip(pick, shades):
         tau = k * cfg.heat.dt
-        ax.plot(x, snaps[k], lw=1.4, alpha=0.85, label=rf"$\tau={tau:.3f}$")
-    ax.set_title("Density-particle backward reconstruction loop (Test B, smoothed-log bw=4)")
+        ax.plot(x, snaps[k], lw=1.4, color=col, label=rf"$\tau={tau:.3f}$")
     ax.set_xlabel("$x$"); ax.set_ylabel("$u$")
     ax.grid(True, alpha=0.25); ax.legend(frameon=False)
     fig.tight_layout(); save(fig, "fig_density_particle_loop")
@@ -267,7 +283,6 @@ def fig_bandwidth_sweep():
     if df is None:
         print("  [skip] score_estimation_audit metrics not found"); return
     fig, ax = plt.subplots(figsize=(6.4, 4.0))
-    markers = {"B": "o", "H": "s", "Z": "^"}
     labels = {"B": "B: Gaussian, $T=0.15$", "H": "H: mixture, $T=0.15$",
               "Z": "Z: near-zero, $T=0.05$"}
     method = "smoothed_log"
@@ -275,13 +290,17 @@ def fig_bandwidth_sweep():
         sub = df[(df.test == t) & (df.score_method == method)].sort_values("bandwidth_factor")
         if sub.empty:
             continue
-        ax.plot(sub.bandwidth_factor, sub.relative_l2, marker=markers[t], label=labels[t])
+        ax.plot(sub.bandwidth_factor, sub.relative_l2, color=C_SL,
+                ls=TEST_LS[t], marker=TEST_MARKER[t], label=labels[t])
         orc = df[(df.test == t) & (df.score_method == "oracle")]
         if not orc.empty:
-            ax.axhline(float(orc.relative_l2.min()), ls="--", lw=0.8, alpha=0.4)
+            floor = float(orc.relative_l2.min())
+            ax.axhline(floor, ls="--", lw=0.9, alpha=0.7, color=C_EXACT)
+            ax.annotate(t, xy=(0.985, floor), xycoords=("axes fraction", "data"),
+                        ha="right", va="bottom", fontsize=7, color=C_EXACT)
+    ax.plot([], [], ls="--", lw=0.9, color=C_EXACT, label="exact-score error (per test)")
     ax.set_yscale("log"); ax.set_xlabel(r"bandwidth factor $h/\Delta x$")
     ax.set_ylabel(r"relative $L^2$ error")
-    ax.set_title("Bandwidth sweep: U-shaped regularization curves (smoothed-log)")
     ax.grid(True, which="both", alpha=0.25); ax.legend(frameon=False)
     fig.tight_layout(); save(fig, "fig_bandwidth_sweep")
 
@@ -298,15 +317,14 @@ def fig_particle_count():
     if nc.empty:
         print("  [skip] no n-convergence rows"); return
     fig, ax = plt.subplots(figsize=(6.2, 4.0))
-    for label, key in [("smoothed-log, bw=4", "smoothed_log"),
-                       ("fd-grid-ratio, bw=4", "fd_grid_ratio")]:
+    for label, key, col in [("smoothed-log, bw=4", "smoothed_log", C_SL),
+                            ("fd-grid-ratio, bw=4", "fd_grid_ratio", C_FD)]:
         sub = nc[(nc.score_method == key) & (nc.bandwidth_factor == 4.0)].sort_values("n_particles")
         if sub.empty:
             continue
-        ax.plot(sub.n_particles, sub.rel_L2, marker="o", label=label)
+        ax.plot(sub.n_particles, sub.rel_L2, marker="o", color=col, label=label)
     ax.set_xscale("log"); ax.set_xlabel("number of density particles $N$")
     ax.set_ylabel(r"relative $L^2$ error")
-    ax.set_title("Particle-count refinement on clean Gaussian data (Test B)")
     ax.grid(True, which="both", alpha=0.25); ax.legend(frameon=False)
     fig.tight_layout(); save(fig, "fig_particle_count_refinement")
 
@@ -329,19 +347,20 @@ def fig_noise():
         return g.index.values, g.values
 
     fig, ax = plt.subplots(figsize=(6.3, 4.0))
-    for lbl, sm, bw in [("particle, bw=4", "smoothed_log", 4.0),
-                        ("particle, bw=6", "smoothed_log", 6.0)]:
+    for lbl, sm, bw, col in [("particle, bw=4", "smoothed_log", 4.0, C_SL),
+                             ("particle, bw=6", "smoothed_log", 6.0, C_SL6)]:
         e, v = curve(sm, bw)
         if len(e):
-            ax.plot(e, v, marker="o", label=lbl)
+            ax.plot(e, v, marker="o", color=col, label=lbl)
     tik = nz[nz.method_label.str.contains("tikhonov_best", case=False, na=False)]
     if not tik.empty:
         g = tik.groupby("eta").rel_L2.mean().sort_index()
-        ax.plot(g.index.values, g.values, marker="^", label="oracle-tuned Tikhonov")
+        ax.plot(g.index.values, g.values, marker="^", ls="--", color=C_TIK,
+                label="optimally-tuned Tikhonov")
+    ax.set_yscale("log")
     ax.set_xlabel(r"relative observation noise $\eta$")
     ax.set_ylabel(r"relative $L^2$ error")
-    ax.set_title("Noise robustness: larger bandwidth trades bias for stability")
-    ax.grid(True, alpha=0.25); ax.legend(frameon=False)
+    ax.grid(True, which="both", alpha=0.25); ax.legend(frameon=False)
     fig.tight_layout(); save(fig, "fig_noise_robustness")
 
 
@@ -371,14 +390,13 @@ def fig_variable_field():
     a = vc.a_of_x(x, alpha0, beta)
 
     fig, ax1 = plt.subplots(figsize=(6.6, 4.0))
-    ax1.plot(x, u0, lw=2, label=r"true $u_0$")
-    ax1.plot(x, uT, "--", label=r"observed $u_T$")
-    ax1.plot(x, r["candidate"], "-.", label="particle reconstruction (bw=4)")
+    ax1.plot(x, u0, color=C_TRUTH, lw=2, label=r"true $u_0$")
+    ax1.plot(x, uT, "--", color=C_OBS, label=r"observed $u_T$")
+    ax1.plot(x, r["candidate"], "-.", color=C_SL, label="particle reconstruction (bw=4)")
     ax1.set_xlabel("$x$"); ax1.set_ylabel("$u$"); ax1.grid(True, alpha=0.25)
-    ax2 = ax1.twinx(); ax2.plot(x, a, ":", lw=1.5, label="$a(x)$"); ax2.set_ylabel("$a(x)$")
+    ax2 = ax1.twinx(); ax2.plot(x, a, ":", lw=1.5, color="0.35", label="$a(x)$"); ax2.set_ylabel("$a(x)$")
     l1, lab1 = ax1.get_legend_handles_labels(); l2, lab2 = ax2.get_legend_handles_labels()
     ax1.legend(l1 + l2, lab1 + lab2, frameon=False, loc="upper right")
-    ax1.set_title(r"Variable-coefficient reconstruction, $\beta=0.9$ Gaussian")
     fig.tight_layout(); save(fig, "fig_variable_coefficient_field")
 
 
@@ -399,12 +417,11 @@ def fig_variable_results():
     tikh = [max(get(c, "varcoeff_tikhonov_best"), 1e-4) for c in cases]
     xp = np.arange(len(cases)); w = 0.25
     fig, ax = plt.subplots(figsize=(6.8, 4.0))
-    ax.bar(xp - w, oracle, w, label="oracle particles")
-    ax.bar(xp, est, w, label="estimated score (sl, bw=4)")
-    ax.bar(xp + w, tikh, w, label="FD Tikhonov (oracle $\\lambda$)")
+    ax.bar(xp - w, oracle, w, color=C_EXACT, label="exact-score particles")
+    ax.bar(xp, est, w, color=C_SL, label="estimated score (sl, bw=4)")
+    ax.bar(xp + w, tikh, w, color=C_TIK, label="FD Tikhonov (optimal $\\lambda$)")
     ax.set_yscale("log"); ax.set_xticks(xp); ax.set_xticklabels(disp)
     ax.set_ylabel(r"relative $L^2$ error (log scale)")
-    ax.set_title("Variable-coefficient summary results")
     ax.grid(True, axis="y", which="both", alpha=0.25); ax.legend(frameon=False)
     fig.tight_layout(); save(fig, "fig_variable_coefficient_results")
 
@@ -417,13 +434,14 @@ def fig_vh_mixture():
     sl = df[(df.case == "VH_beta05") & (df.method == "smoothed_log")].sort_values("bandwidth_factor")
     orc = df[(df.case == "VH_beta05") & (df.method == "oracle")]
     fig, ax = plt.subplots(figsize=(6.2, 4.0))
-    ax.plot(sl.bandwidth_factor, sl.relative_l2, marker="o")
+    ax.plot(sl.bandwidth_factor, sl.relative_l2, marker="o", color=C_SL,
+            label="smoothed-log (estimated score)")
     if not orc.empty:
-        ax.axhline(float(orc.relative_l2.iloc[0]), ls="--", lw=1,
-                   label=f"oracle mixture level = {float(orc.relative_l2.iloc[0]):.4f}")
+        ax.axhline(float(orc.relative_l2.iloc[0]), ls="--", lw=1, color=C_EXACT,
+                   label=f"exact-score mixture level = {float(orc.relative_l2.iloc[0]):.4f}")
+    ax.set_yscale("log")
     ax.set_xlabel("bandwidth factor"); ax.set_ylabel(r"relative $L^2$ error")
-    ax.set_title(r"VH mixture bandwidth refinement ($\beta=0.5$)")
-    ax.grid(True, alpha=0.25); ax.legend(frameon=False)
+    ax.grid(True, which="both", alpha=0.25); ax.legend(frameon=False)
     fig.tight_layout(); save(fig, "fig_vh_mixture_bandwidth_refinement")
 
 
