@@ -58,7 +58,8 @@ def main():
     # ---- panel (b): seed-mean E2 vs bandwidth, with chosen vs optimal marked ----
     bw = a["bw_factors"]; e2 = a["bw_E2_mean"]
     f_disc = float(a["f_disc_mean"]); f_min = float(a["f_min_mean"])
-    axB.plot(bw, e2, "o-", color="tab:blue", lw=1.8, label="seed-mean $E_2$ (particle)")
+    axB.plot(bw, e2, "o-", color="tab:blue", lw=1.8,
+             label="mean $E_2$ over realizations (particle)")
     # interpolate curve value at the mean discrepancy bw for the marker
     e2_at_disc = float(np.interp(f_disc, bw, e2))
     e2_at_min = float(np.interp(f_min, bw, e2))
@@ -70,7 +71,7 @@ def main():
     axB.plot([f_disc], [e2_at_disc], "o", color="black", ms=8, zorder=6)
     axB.set_yscale("log")
     axB.set_xlabel(r"bandwidth factor $h/\Delta x$")
-    axB.set_ylabel(r"seed-mean relative $L^2$ error $E_2$")
+    axB.set_ylabel(r"mean relative $L^2$ error $E_2$")
     axB.set_title("(b)", loc="left")
     axB.grid(True, which="both", alpha=0.25)
     axB.legend(frameon=False)
