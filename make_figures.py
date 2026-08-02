@@ -397,7 +397,8 @@ def fig_variable_results():
     if df is None:
         print("  [skip] variable_coeff metrics not found"); return
     cases = ["VB_beta05", "VB_beta09", "VH_beta05", "VH_beta09"]
-    disp = [r"VB $\beta$=.5", r"VB $\beta$=.9", r"VH $\beta$=.5", r"VH $\beta$=.9"]
+    disp = ["Gaussian\n" + r"$\beta=0.5$", "Gaussian\n" + r"$\beta=0.9$",
+            "Mixture\n" + r"$\beta=0.5$", "Mixture\n" + r"$\beta=0.9$"]
 
     def get(case, method):
         s = df[(df.case == case) & (df.method == method)]
