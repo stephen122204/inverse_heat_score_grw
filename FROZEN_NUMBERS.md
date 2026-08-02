@@ -22,7 +22,7 @@ Gradient-glob exact-score rel_L2 across the grid×globs sweep (n_grid ∈ {100,2
 | B | 0.1755 | 0.52 % |
 | H | 0.2400 | 0.53 % |
 | Z | 0.1549 | 0.14 % |
-Also flat under dt refinement: B glob E2 = 0.1748/0.1749/0.1749/0.1750 at dt = 0.002/0.001/0.0005/0.00025 (round-3 sweep).
+Also flat under dt refinement: B glob E2 = 0.1748/0.1749/0.1749/0.1750 at dt = 0.002/0.001/0.0005/0.00025 (round-3 sweep; regenerated and archived 2026-07-11 by `scripts/run_dt_sweep_glob.py` → `outputs/dt_sweep_glob_20260711_002100/dt_sweep_glob.csv`, stored glob values 0.174813/0.174866/0.174866/0.174989, density control 0.0070/0.0069/0.0069/0.0069; now reported in Sec 3.3 as "moved only between 0.1748 and 0.1750").
 
 Canonical cell (n_grid=400, N=5000, bw 4): B 0.175 / 0.0069 (25×); H 0.239 / 0.0160 (15×); Z 0.155 / 0.0175 (8.9×).
 Density exact-score falls with grid: B 0.097 (n=100) → 0.007 (n=400); N-invariant.
@@ -72,6 +72,11 @@ re-executed from scratch 2026-07-03, identical: `discrepancy_principle_final_202
 ## 6. Non-smooth cases, T=0.05, N=10000 (tab:nonsmooth, fig_nonsmooth_reconstruction)
 tent: exact 0.025, smoothed-log best (bw6) 0.053, Tikhonov 0.009, E_fwd(sl bw6) 0.023.
 top-hat: exact 0.125, smoothed-log best (bw2) 0.143, Tikhonov 0.109.
+Snapshot solver note (v5.0 audit): the nonsmooth exact-score snapshots come from the
+spectral cosine-transform (DCT) propagator in run_nonsmooth_case.py, NOT Crank-Nicolson
+(CN is the variable-coefficient study only); the manuscript now says "cosine-transform
+forward snapshots". The `numerical_oracle_score` smoothed log-derivative routine is
+shared by both studies.
 Source: `outputs/nonsmooth_case_20260629_152746/` (re-run bit-identical 2026-07-03).
 
 ## 7. Variable coefficient (tab:variable, fig_variable_coefficient_*)
@@ -82,6 +87,14 @@ Source: `outputs/nonsmooth_case_20260629_152746/` (re-run bit-identical 2026-07-
 | VH β=0.5 | 0.0201 | 0.0794 | 0.0870 | 0.0917 | 0.0054 |
 | VH β=0.9 | 0.0204 | 0.0877 | 0.0897 | 0.2508 | 0.0055 |
 Velocity v = a(x)∂ₓlog u (no a′ term). Forward: Crank-Nicolson, dt_fwd = 1e-3 (= reverse dt).
+Column-label note (round 6): the "fd bw4" column here is the variable-coefficient
+script's `fd_grid_ratio` branch, which routes to `log_density_fd_score` (central
+differences of log(u+eps), i.e. the smoothed-log construction WITHOUT smoothing) —
+not the constant-coefficient gradient(u)/(u+eps) grid-ratio path. The manuscript
+therefore labels this column "ul factor 4" (unsmoothed log-gradient). Values unchanged.
+Exact-score column: from CN snapshots via `numerical_oracle_score` (Gaussian
+pre-smoothing sigma = 3*dx, then central differences of the log); same routine backs
+the tab:nonsmooth exact-score column at beta=0 — now stated in the manuscript.
 VH-mixture sweep (β=0.5, bw 2–6): 0.734 / 0.106 / 0.079 / 0.078 / 0.087; exact floor 0.0201.
 Source: `outputs/paper_run_20260627/variable_coefficient_audit_20260627_082333/`,
 `vh_mixture_bandwidth_refinement_20260627_084940/`.

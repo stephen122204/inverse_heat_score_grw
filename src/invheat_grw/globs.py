@@ -116,7 +116,8 @@ def apply_reflecting_boundary(positions: np.ndarray, x_min: float, x_max: float)
     Apply reflecting boundary conditions to glob positions.
 
     Globs that exit [x_min, x_max] are reflected back.
-    Works iteratively to handle multiple reflections in one step.
+    One mirror pass per wall, then a clip fallback for displacements
+    longer than the domain (never reached at the paper's step sizes).
     """
     pos = positions.copy()
     L = x_max - x_min

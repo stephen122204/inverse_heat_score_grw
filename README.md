@@ -49,16 +49,22 @@ pip install -r requirements.txt                     # pinned exact versions
 python reproduce.py                                 # all CSVs -> outputs/, all figures -> figures/
 ```
 
-`reproduce.py` runs the five paper experiments plus the grid×N
-representation/convergence sweep (which backs **Fig 1**), then regenerates every
-figure **from the resulting CSVs** via `make_figures.py` (no figure hardcodes any
-result). Use `python reproduce.py --figures-only` to rebuild figures from
-existing CSVs.
+`reproduce.py` runs every experiment behind the paper's tables and figures
+(the grid×N representation/convergence sweep, the time-step sweep, the
+score-estimation/bandwidth audit, the validation stage, the 25-realization
+noise study, the discrepancy-principle run with its tau=1.2 reselection, the
+non-smooth cases, the variable-coefficient audit, and the VH-mixture bandwidth
+refinement), then regenerates the twelve shipped figures **from the resulting
+CSVs** via `make_figures.py --only ...`, `make_new_figures.py`, and
+`make_discrepancy_figure.py` (no figure hardcodes any result). Use
+`python reproduce.py --figures-only` to rebuild figures from existing CSVs.
 
 **Determinism.** The density-particle method is deterministic (quantile
-initialisation, analytic/KDE scores, no RNG), so the experiment CSVs are
-bit-for-bit reproducible; only the noise study uses fixed seeds `{0,1,2}` and is
-reproducible in its seed-averaged means. A single source of truth for every
+initialisation, analytic/KDE scores, no RNG), so those experiment CSVs are
+bit-for-bit reproducible. The studies that draw random observation noise use
+fixed realizations: `0–24` for the reported noise and discrepancy tables, and
+`0–2` for the superseded validation-stage reconciliation task; both are
+reproducible in their realization means. A single source of truth for every
 headline number lives in `FROZEN_NUMBERS.md`.
 
 > Note: `np.trapz` was removed in NumPy 2.0; the code uses a `np.trapezoid`

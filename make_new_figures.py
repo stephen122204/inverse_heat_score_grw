@@ -40,8 +40,9 @@ from invheat_grw.methods import (
 
 OUT = REPO / "figures"
 OUT.mkdir(exist_ok=True)
-plt.rcParams.update({"font.size": 10, "axes.titlesize": 11, "axes.labelsize": 10,
-                     "legend.fontsize": 8, "figure.dpi": 160})
+
+import figstyle
+figstyle.apply_paper_style()
 
 
 def patch(cfg: Config, **ov) -> Config:
@@ -98,17 +99,17 @@ def fig_representation_failure_visual():
     print(f"  [4.2] density E2={e2_dp:.4f}  gradient-glob E2={e2_gg:.4f}")
 
     fig, ax = plt.subplots(figsize=(6.6, 4.2))
-    ax.plot(x, u0, "k-", lw=2.2, label=r"true $u_0$", zorder=5)
-    ax.plot(x, dp, "-", color="tab:red", lw=1.8,
-            label=rf"density particles, carry $u$ (exact score), $E_2={e2_dp:.4f}$")
-    ax.plot(x, gg, "-", color="tab:purple", lw=1.8,
-            label=rf"gradient globs, carry $q=u_x$ (exact score), $E_2={e2_gg:.3f}$")
-    ax.plot(x, g, "--", color="0.5", lw=1.1, alpha=0.8,
+    ax.plot(x, u0, "-", color=figstyle.TRUTH, lw=2.4, label=r"true $u_0$", zorder=3)
+    ax.plot(x, dp, "--", color=figstyle.EXACT, lw=2.0, zorder=6,
+            label=rf"density particles, carrying $u$ (exact score), $E_2={e2_dp:.4f}$")
+    ax.plot(x, gg, "-", color=figstyle.GLOB, lw=1.9,
+            label=rf"gradient globs, carrying $q=u_x$ (exact score), $E_2={e2_gg:.3f}$")
+    ax.plot(x, g, "--", color=figstyle.OBS, lw=1.2, alpha=0.9,
             label=r"observed $g=u(\cdot,T)$")
     ax.set_xlabel("$x$")
     ax.set_ylabel("$u$")
     ax.grid(True, alpha=0.25)
-    ax.legend(frameon=False, loc="upper right")
+    ax.legend(loc="upper right", fontsize=8)
     fig.tight_layout()
     save(fig, "fig_representation_failure_visual")
 
@@ -122,9 +123,9 @@ def fig_noise_robustness_bands():
         print("  [skip 4.3] no noise_study_25seeds_* dir"); return
     agg = pd.read_csv(d / "noise_study_summary.csv")
     series = [
-        ("smoothed_log_bw4", "smoothed-log, bw=4", "tab:blue", "o", "-"),
-        ("smoothed_log_bw6", "smoothed-log, bw=6", "tab:cyan", "s", "-"),
-        ("tikhonov_optimal", "optimally-tuned Tikhonov", "tab:green", "^", "--"),
+        ("smoothed_log_bw4", r"smoothed-log, $h/\Delta x = 4$", figstyle.METHOD, "o", "-"),
+        ("smoothed_log_bw6", r"smoothed-log, $h/\Delta x = 6$", figstyle.METHOD_ALT, "s", "-"),
+        ("tikhonov_optimal", "optimally tuned Tikhonov", figstyle.TIKH, "^", "--"),
     ]
     fig, ax = plt.subplots(figsize=(6.6, 4.2))
     for key, lbl, col, mk, ls in series:
@@ -132,14 +133,14 @@ def fig_noise_robustness_bands():
         eta = sub.eta.to_numpy()
         mean = sub["mean"].to_numpy()
         std = sub["std"].to_numpy()
-        ax.plot(eta, mean, marker=mk, ls=ls, color=col, label=lbl, lw=1.8)
+        ax.plot(eta, mean, marker=mk, ls=ls, color=col, label=lbl, lw=1.9)
         ax.fill_between(eta, np.maximum(mean - std, 1e-6), mean + std,
                         color=col, alpha=0.18, linewidth=0)
     ax.set_yscale("log")
     ax.set_xlabel(r"relative observation noise $\eta$")
     ax.set_ylabel(r"relative $L^2$ error $E_2$")
     ax.grid(True, which="both", alpha=0.25)
-    ax.legend(frameon=False)
+    ax.legend()
     fig.tight_layout()
     save(fig, "fig_noise_robustness_bands")
 
@@ -170,15 +171,15 @@ def fig_nonsmooth_reconstruction():
     e2_tik = e2_of("tikhonov_optimal")
 
     fig, ax = plt.subplots(figsize=(6.6, 4.2))
-    ax.plot(x, u0, "k-", lw=2.2, label=r"true $u_0$ (tent)", zorder=5)
-    ax.plot(x, sl, "-", color="tab:blue", lw=1.8,
-            label=rf"smoothed-log, bw={best_bw}, $E_2={e2_sl:.3f}$")
-    ax.plot(x, tik, "--", color="tab:green", lw=1.6,
-            label=rf"optimally-tuned Tikhonov, $E_2={e2_tik:.3f}$")
+    ax.plot(x, u0, "-", color=figstyle.TRUTH, lw=2.4, label=r"true $u_0$ (tent)", zorder=5)
+    ax.plot(x, sl, "-", color=figstyle.METHOD, lw=1.9,
+            label=rf"smoothed-log, $h/\Delta x = {best_bw}$, $E_2={e2_sl:.3f}$")
+    ax.plot(x, tik, "--", color=figstyle.TIKH, lw=1.7,
+            label=rf"optimally tuned Tikhonov, $E_2={e2_tik:.3f}$")
     ax.set_xlabel("$x$")
     ax.set_ylabel("$u$")
     ax.grid(True, alpha=0.25)
-    ax.legend(frameon=False, loc="upper right")
+    ax.legend(loc="upper right")
     fig.tight_layout()
     save(fig, "fig_nonsmooth_reconstruction")
 

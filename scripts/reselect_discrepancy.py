@@ -56,7 +56,10 @@ def patch(cfg: Config, **ov) -> Config:
 
 
 def main():
-    src = max((Path(h) for h in glob.glob(str(REPO / "outputs" / "discrepancy_principle_*"))
+    # [0-9] guard: skip the discrepancy_principle_final_* dirs this script itself
+    # writes — they lack discrepancy_bw_curve.csv and would be picked by max()
+    # because "f" sorts after every digit.
+    src = max((Path(h) for h in glob.glob(str(REPO / "outputs" / "discrepancy_principle_[0-9]*"))
                if Path(h).is_dir()), key=lambda p: p.name)
     bw = pd.read_csv(src / "discrepancy_bw_curve.csv")
     raw_orig = pd.read_csv(src / "discrepancy_raw.csv")

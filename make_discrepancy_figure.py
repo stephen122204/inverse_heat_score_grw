@@ -24,8 +24,9 @@ import matplotlib.pyplot as plt
 
 REPO = Path(__file__).resolve().parent
 PAPER_FIGS = REPO.parent / "paper_draft" / "figures"
-plt.rcParams.update({"font.size": 10, "axes.titlesize": 11, "axes.labelsize": 10,
-                     "legend.fontsize": 8, "figure.dpi": 160})
+
+import figstyle
+figstyle.apply_paper_style()
 
 
 def latest(pattern):
@@ -45,36 +46,36 @@ def main():
     fig, (axA, axB) = plt.subplots(1, 2, figsize=(11.5, 4.4))
 
     # ---- panel (a): reconstruction overlay, discrepancy-tuned parameters ----
-    axA.plot(x, u0, "k-", lw=2.2, label=r"true $u_0$", zorder=5)
-    axA.plot(x, a["rep_part_disc"], "-", color="tab:blue", lw=1.8,
-             label=rf"particle, discrepancy bw, $E_2={float(a['rep_E2_part']):.3f}$")
-    axA.plot(x, a["rep_tik_disc"], "--", color="tab:green", lw=1.6,
+    axA.plot(x, u0, "-", color=figstyle.TRUTH, lw=2.4, label=r"true $u_0$", zorder=5)
+    axA.plot(x, a["rep_part_disc"], "-", color=figstyle.METHOD, lw=1.8,
+             label=rf"particle, discrepancy bandwidth, $E_2={float(a['rep_E2_part']):.3f}$")
+    axA.plot(x, a["rep_tik_disc"], "--", color=figstyle.TIKH, lw=1.7,
              label=rf"Tikhonov, discrepancy $\lambda$, $E_2={float(a['rep_E2_tik']):.3f}$")
     axA.set_xlabel("$x$"); axA.set_ylabel("$u$")
     axA.set_title("(a)", loc="left")
     axA.grid(True, alpha=0.25)
-    axA.legend(frameon=False, loc="upper right")
+    axA.legend(loc="upper right", fontsize=8)
 
     # ---- panel (b): seed-mean E2 vs bandwidth, with chosen vs optimal marked ----
     bw = a["bw_factors"]; e2 = a["bw_E2_mean"]
     f_disc = float(a["f_disc_mean"]); f_min = float(a["f_min_mean"])
-    axB.plot(bw, e2, "o-", color="tab:blue", lw=1.8,
+    axB.plot(bw, e2, "o-", color=figstyle.METHOD, lw=1.8,
              label="mean $E_2$ over realizations (particle)")
     # interpolate curve value at the mean discrepancy bw for the marker
     e2_at_disc = float(np.interp(f_disc, bw, e2))
     e2_at_min = float(np.interp(f_min, bw, e2))
-    axB.axvline(f_min, color="tab:red", ls="--", lw=1.4,
-                label=rf"error-minimizing bw = {f_min:.0f}")
-    axB.axvline(f_disc, color="black", ls=":", lw=1.6,
-                label=rf"mean discrepancy bw = {f_disc:.1f}")
-    axB.plot([f_min], [e2_at_min], "s", color="tab:red", ms=8, zorder=6)
-    axB.plot([f_disc], [e2_at_disc], "o", color="black", ms=8, zorder=6)
+    axB.axvline(f_min, color=figstyle.EXACT, ls="--", lw=1.4,
+                label=rf"error-minimizing bandwidth factor $= {f_min:.0f}$")
+    axB.axvline(f_disc, color=figstyle.TRUTH, ls=":", lw=1.6,
+                label=rf"mean selected bandwidth factor $= {f_disc:.1f}$")
+    axB.plot([f_min], [e2_at_min], "s", color=figstyle.EXACT, ms=8, zorder=6)
+    axB.plot([f_disc], [e2_at_disc], "o", color=figstyle.TRUTH, ms=8, zorder=6)
     axB.set_yscale("log")
     axB.set_xlabel(r"bandwidth factor $h/\Delta x$")
     axB.set_ylabel(r"mean relative $L^2$ error $E_2$")
     axB.set_title("(b)", loc="left")
     axB.grid(True, which="both", alpha=0.25)
-    axB.legend(frameon=False)
+    axB.legend(fontsize=8)
 
     fig.tight_layout()
     for base in (REPO / "figures", PAPER_FIGS):
