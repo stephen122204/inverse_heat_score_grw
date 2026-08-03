@@ -11,3 +11,18 @@ outputs/*/
 *.egg-info/
 dist/
 build/
+
+# local process files, not part of the release
+FROZEN_NUMBERS.md
+REPORT_*.md
+pyrightconfig.json
+outputs/*.zip
+figures/fig_noise_robustness.*
+scripts/run_baseline_verification.py
+scripts/run_convergence_study.py
+scripts/run_density_estimated_audit.py
+scripts/run_mixture_tests.py
+scripts/run_regularization_suite.py
+scripts/run_sanity_checks.py
+scripts/run_targeted_suite.py
+scripts/run_single.py
