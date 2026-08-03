@@ -1,15 +1,17 @@
 """
-make_discrepancy_figure.py — fig_discrepancy_comparison (Task §4).
+make_discrepancy_figure.py — the discrepancy-principle comparison figure.
 
 Reads the latest outputs/discrepancy_principle_* and builds a two-panel figure:
- (a) realistic reconstruction overlay at eta=0.005 for the representative seed:
-     true u0, discrepancy-tuned particle, discrepancy-tuned Tikhonov (E2 in legend).
- (b) seed-mean true E2 vs particle bandwidth factor at eta=0.005 (the noisy
-     U-curve), with the mean discrepancy-chosen bandwidth and the bandwidth that
-     minimizes the mean true error marked. The gap between them is the diagnostic.
+ (a) realistic reconstruction overlay at eta=0.005 for the representative
+     realization: true u0, discrepancy-tuned particle, discrepancy-tuned
+     Tikhonov (E2 in legend).
+ (b) realization-mean true E2 vs particle bandwidth factor at eta=0.005 (the
+     noisy U-curve), with the mean discrepancy-chosen bandwidth and the
+     bandwidth that minimizes the mean true error marked. The gap between them
+     is the diagnostic.
 
-No editorializing title; the caption (written separately) carries the message.
-Writes to figures/ and paper_draft/figures/.
+No editorializing title; the caption carries the message. Writes to figures/
+(and syncs to a sibling paper_draft/figures/ when that directory exists).
 """
 
 from __future__ import annotations
@@ -56,7 +58,7 @@ def main():
     axA.grid(True, alpha=0.25)
     axA.legend(loc="upper right", fontsize=8)
 
-    # ---- panel (b): seed-mean E2 vs bandwidth, with chosen vs optimal marked ----
+    # ---- panel (b): realization-mean E2 vs bandwidth, chosen vs optimal marked ----
     bw = a["bw_factors"]; e2 = a["bw_E2_mean"]
     f_disc = float(a["f_disc_mean"]); f_min = float(a["f_min_mean"])
     axB.plot(bw, e2, "o-", color=figstyle.METHOD, lw=1.8,
@@ -78,13 +80,16 @@ def main():
     axB.legend(fontsize=8)
 
     fig.tight_layout()
-    for base in (REPO / "figures", PAPER_FIGS):
-        base.mkdir(exist_ok=True)
+    targets = [REPO / "figures"]
+    targets[0].mkdir(exist_ok=True)
+    if PAPER_FIGS.is_dir():
+        targets.append(PAPER_FIGS)
+    for base in targets:
         fig.savefig(base / "fig_discrepancy_comparison.pdf")
         fig.savefig(base / "fig_discrepancy_comparison.png", dpi=220)
     plt.close(fig)
-    print(f"wrote fig_discrepancy_comparison (rep seed {rep_seed}, eta={eta}, "
-          f"disc bw {f_disc:.2f} vs min-error bw {f_min:.0f})")
+    print(f"wrote fig_discrepancy_comparison (representative realization {rep_seed}, "
+          f"eta={eta}, disc bw {f_disc:.2f} vs min-error bw {f_min:.0f})")
 
 
 if __name__ == "__main__":

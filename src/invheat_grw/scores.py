@@ -6,7 +6,7 @@ The score is:
 
 Two variants are provided:
 
-1. ORACLE score (exact Gaussian formula):
+1. EXACT score (closed-form Gaussian formula; labeled "oracle" in method names):
    For u(x, t) = A * (sigma0 / sigma_t) * exp(-(x-mu)^2 / (2 sigma_t^2)):
        s_exact(x, t_phys) = -(x - mu) / sigma_t^2
 
@@ -35,12 +35,12 @@ from .globs import GlobState, reconstruct_field
 
 
 # ---------------------------------------------------------------------------
-# Oracle score
+# Exact score
 # ---------------------------------------------------------------------------
 
 def oracle_score(positions: np.ndarray, t_phys: float, cfg: Config) -> np.ndarray:
     """
-    Exact oracle score s(x, t_phys) = partial_x log u(x, t_phys) = u_x / u.
+    Exact score s(x, t_phys) = partial_x log u(x, t_phys) = u_x / u.
 
     For Gaussian IC:
         s = -(x - mu) / sigma_t^2,  sigma_t^2 = sigma0^2 + 2*alpha*t_phys
@@ -81,7 +81,7 @@ def oracle_score(positions: np.ndarray, t_phys: float, cfg: Config) -> np.ndarra
         return scores
 
     else:
-        raise ValueError(f"Unknown IC type for oracle score: {ic.type!r}")
+        raise ValueError(f"Unknown IC type for exact score: {ic.type!r}")
 
 
 # ---------------------------------------------------------------------------

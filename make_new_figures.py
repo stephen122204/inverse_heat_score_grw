@@ -1,14 +1,14 @@
 """
-make_new_figures.py — Build the three NEW paper figures (Tasks 4.2, 4.3, 4.4).
+make_new_figures.py — representation-failure, noise-band, and nonsmooth figures.
 
 All data come from real runs:
-  4.2 fig_representation_failure_visual : Test B exact-score density-particle
+  fig_representation_failure_visual : Test B exact-score density-particle
         (N=5000, bw4, E2~0.0069) vs gradient-glob (E2~0.175), reproduced inline
         — the SAME runs behind Table 1.
-  4.3 fig_noise_robustness_bands        : reads the latest noise_study_25seeds_*
+  fig_noise_robustness_bands        : reads the latest noise_study_25seeds_*
         arrays; mean line + shaded +/-1 std band for smoothed-log bw4, bw6, and
-        optimally-tuned Tikhonov.
-  4.4 fig_nonsmooth_reconstruction      : reads the latest nonsmooth_case_* arrays;
+        optimally tuned Tikhonov.
+  fig_nonsmooth_reconstruction      : reads the latest nonsmooth_case_* arrays;
         tent true u0, best smoothed-log reconstruction, Tikhonov.
 
 Nothing here hardcodes a numeric result; legends print E2 read from the data.
@@ -70,7 +70,7 @@ def latest(pattern):
 
 
 # ---------------------------------------------------------------------------
-# 4.2 — gradient representation failure, shown visually (Test B)
+# Gradient representation failure, shown visually (Test B)
 # ---------------------------------------------------------------------------
 def fig_representation_failure_visual():
     base = load_config(str(REPO / "configs" / "gaussian_base.yaml"))
@@ -96,7 +96,7 @@ def fig_representation_failure_visual():
             g, x, cfg_gg, np.random.default_rng(42)).candidate
 
     e2_dp, e2_gg = e2(dp), e2(gg)
-    print(f"  [4.2] density E2={e2_dp:.4f}  gradient-glob E2={e2_gg:.4f}")
+    print(f"  density E2={e2_dp:.4f}  gradient-glob E2={e2_gg:.4f}")
 
     fig, ax = plt.subplots(figsize=(6.6, 4.2))
     ax.plot(x, u0, "-", color=figstyle.TRUTH, lw=2.4, label=r"true $u_0$", zorder=3)
@@ -115,12 +115,12 @@ def fig_representation_failure_visual():
 
 
 # ---------------------------------------------------------------------------
-# 4.3 — noise study with error bands (mean +/- 1 std)
+# Noise study with error bands (mean +/- 1 std)
 # ---------------------------------------------------------------------------
 def fig_noise_robustness_bands():
     d = latest("noise_study_25seeds_*")
     if d is None:
-        print("  [skip 4.3] no noise_study_25seeds_* dir"); return
+        print("  [skip] no noise_study_25seeds_* dir"); return
     agg = pd.read_csv(d / "noise_study_summary.csv")
     series = [
         ("smoothed_log_bw4", r"smoothed-log, $h/\Delta x = 4$", figstyle.METHOD, "o", "-"),
@@ -146,12 +146,12 @@ def fig_noise_robustness_bands():
 
 
 # ---------------------------------------------------------------------------
-# 4.4 — non-smooth (tent) reconstruction vs truth
+# Non-smooth (tent) reconstruction vs truth
 # ---------------------------------------------------------------------------
 def fig_nonsmooth_reconstruction():
     d = latest("nonsmooth_case_*")
     if d is None:
-        print("  [skip 4.4] no nonsmooth_case_* dir"); return
+        print("  [skip] no nonsmooth_case_* dir"); return
     arr = np.load(d / "nonsmooth_arrays.npz")
     met = pd.read_csv(d / "nonsmooth_metrics.csv")
     case = "tent"
@@ -185,11 +185,11 @@ def fig_nonsmooth_reconstruction():
 
 
 def main():
-    print("[fig] 4.2 representation_failure_visual")
+    print("[fig] representation_failure_visual")
     fig_representation_failure_visual()
-    print("[fig] 4.3 noise_robustness_bands")
+    print("[fig] noise_robustness_bands")
     fig_noise_robustness_bands()
-    print("[fig] 4.4 nonsmooth_reconstruction")
+    print("[fig] nonsmooth_reconstruction")
     fig_nonsmooth_reconstruction()
     print("done.")
 

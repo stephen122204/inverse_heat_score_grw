@@ -1,5 +1,5 @@
 """
-run_nonsmooth_case.py — One non-smooth, non-Gaussian test case (Task 3.2).
+run_nonsmooth_case.py — non-smooth test cases (tent and top-hat).
 
 Adds a non-smooth initial condition to the constant-coefficient backward-heat
 study, run through the IDENTICAL production pipeline (density-particle with
@@ -217,7 +217,7 @@ def main():
     df.to_csv(out / "nonsmooth_metrics.csv", index=False)
     np.savez(out / "nonsmooth_arrays.npz", **out_arrays)
 
-    lines = ["NON-SMOOTH TEST CASE (Task 3.2)",
+    lines = ["NON-SMOOTH TEST CASES",
              f"alpha={ALPHA} n_grid={N_GRID} dt={DT} domain[0,1] Neumann epsilon={EPSILON}",
              "forward model: constant-coefficient spectral (cosine-transform/DCT)",
              f"N_particles={N_PARTICLES}  bandwidth sweep {BW_FACTORS}", ""]

@@ -5,6 +5,9 @@ Each method integrates glob positions backward from t = T to t = 0
 by running n_steps of size dt.  After integration, the field is
 reconstructed from the final glob positions.
 
+The method names below use the label ``oracle`` for the exact analytic
+score; the paper calls this the exact score.
+
 METHODS IMPLEMENTED
 -------------------
 
@@ -99,7 +102,7 @@ class MethodResult:
     score_mean: list = field(default_factory=list)
     score_std: list = field(default_factory=list)
     final_positions: Optional[np.ndarray] = None
-    # Per-step score error vs oracle (for estimated-score methods)
+    # Per-step score error vs the exact score (for estimated-score methods)
     score_L2_error_vs_oracle: list = field(default_factory=list)
     score_Linf_error_vs_oracle: list = field(default_factory=list)
     score_core_L2_error_vs_oracle: list = field(default_factory=list)

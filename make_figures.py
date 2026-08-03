@@ -138,47 +138,13 @@ def fig_naive():
 
 
 # ---------------------------------------------------------------------------
-# Figure: representation audit bars (REAL data, density at bw=4 to match table)
-# ---------------------------------------------------------------------------
-def fig_representation():
-    d = latest_dir("representation_audit_*")
-    df = read_csv(d, "representation_audit_metrics.csv")
-    if df is None:
-        print("  [skip] representation_audit metrics not found"); return
-    tests = ["B", "H", "Z"]
-    # Canonical paper setting (Table 1): n_grid=400, density n_particles=5000, bw=4.
-    # (The CSV may contain a full grid x N sweep; pin to the canonical cell.)
-    grad, dens = [], []
-    for t in tests:
-        g = df[(df.test == t) & (df.method_type == "gradient_glob_oracle")
-               & (df.n_grid == 400)]
-        dp = df[(df.test == t) & (df.method_type == "density_particle_oracle")
-                & (df.bandwidth_factor == 4.0) & (df.n_grid == 400)
-                & (df.n_particles == 5000)]
-        grad.append(float(g.relative_l2.mean()))
-        dens.append(float(dp.relative_l2.iloc[0]))
-    xp = np.arange(len(tests)); w = 0.36
-    fig, ax = plt.subplots(figsize=(6.3, 4.0))
-    ax.bar(xp - w / 2, grad, w, color=C_GLOB, label="gradient globs + field score")
-    ax.bar(xp + w / 2, dens, w, color=C_EXACT, label="density particles + field score (bw=4)")
-    ax.set_yscale("log"); ax.set_xticks(xp); ax.set_xticklabels(tests)
-    ax.set_ylabel(r"relative $L^2$ error (log scale)")
-    ax.grid(True, axis="y", which="both", alpha=0.25)
-    for i, v in enumerate(grad):
-        ax.text(i - w / 2, v * 1.12, f"{v:.3f}", ha="center", va="bottom", fontsize=8)
-    for i, v in enumerate(dens):
-        ax.text(i + w / 2, v * 1.18, f"{v:.4f}", ha="center", va="bottom", fontsize=8)
-    ax.legend(frameon=False)
-    fig.tight_layout(); save(fig, "fig_representation_audit")
-
-
-# ---------------------------------------------------------------------------
-# Figure 1: grid x N convergence — the gradient-glob ceiling is STRUCTURAL.
+# Figure: grid x N convergence — the gradient-glob error is set by the
+# representation.
 # Left panel:  rel_L2 vs n_grid (density at largest N) — gradient-glob flat,
-#              density-oracle drops far below.
-# Right panel: rel_L2 vs N at n_grid=400 — gradient-glob plateau (N-independent,
-#              shown as a band), density-oracle flat at its KDE reconstruction
-#              floor. Refining neither grid nor N moves the gradient ceiling.
+#              density exact-score drops far below.
+# Right panel: rel_L2 vs N at n_grid=400 — gradient-glob level (N-independent),
+#              density exact-score flat at its KDE reconstruction floor.
+#              Refining neither grid nor N moves the gradient-glob error.
 # ---------------------------------------------------------------------------
 def fig_convergence():
     d = latest_dir("representation_audit_*")
@@ -320,41 +286,6 @@ def fig_particle_count():
 
 
 # ---------------------------------------------------------------------------
-# Figure: noise robustness (REAL data, mean over seeds)
-# ---------------------------------------------------------------------------
-def fig_noise():
-    d = latest_dir("validation_stage_*")
-    df = read_csv(d, "validation_metrics.csv")
-    if df is None:
-        print("  [skip] validation metrics not found"); return
-    nz = df[df.task.str.contains("noise", case=False, na=False)]
-    if nz.empty:
-        print("  [skip] no noise rows"); return
-
-    def curve(score_method, bw):
-        sub = nz[(nz.score_method == score_method) & (nz.bandwidth_factor == bw)]
-        g = sub.groupby("eta").rel_L2.mean().sort_index()
-        return g.index.values, g.values
-
-    fig, ax = plt.subplots(figsize=(6.3, 4.0))
-    for lbl, sm, bw, col in [("particle, bw=4", "smoothed_log", 4.0, C_SL),
-                             ("particle, bw=6", "smoothed_log", 6.0, C_SL6)]:
-        e, v = curve(sm, bw)
-        if len(e):
-            ax.plot(e, v, marker="o", color=col, label=lbl)
-    tik = nz[nz.method_label.str.contains("tikhonov_best", case=False, na=False)]
-    if not tik.empty:
-        g = tik.groupby("eta").rel_L2.mean().sort_index()
-        ax.plot(g.index.values, g.values, marker="^", ls="--", color=C_TIK,
-                label="optimally-tuned Tikhonov")
-    ax.set_yscale("log")
-    ax.set_xlabel(r"relative observation noise $\eta$")
-    ax.set_ylabel(r"relative $L^2$ error")
-    ax.grid(True, which="both", alpha=0.25); ax.legend(frameon=False)
-    fig.tight_layout(); save(fig, "fig_noise_robustness")
-
-
-# ---------------------------------------------------------------------------
 # Variable-coefficient figures (REAL data)
 # ---------------------------------------------------------------------------
 def _import_varcoeff():
@@ -445,12 +376,10 @@ def main():
     args = ap.parse_args()
     figs = {
         "naive": fig_naive,
-        "representation": fig_representation,
         "convergence": fig_convergence,
         "loop": fig_density_loop,
         "bandwidth": fig_bandwidth_sweep,
         "particle_count": fig_particle_count,
-        "noise": fig_noise,
         "variable_field": fig_variable_field,
         "variable_results": fig_variable_results,
         "vh_mixture": fig_vh_mixture,
