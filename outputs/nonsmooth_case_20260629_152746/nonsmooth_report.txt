@@ -1,0 +1,20 @@
+NON-SMOOTH TEST CASE (Task 3.2)
+alpha=0.01 n_grid=400 dt=0.001 domain[0,1] Neumann epsilon=1e-08
+forward model: constant-coefficient spectral (cosine-transform/DCT)
+N_particles=10000  bandwidth sweep [2.0, 4.0, 6.0]
+
+Case tent  T=0.05  n_steps=50  forward-contrast(max-min ratio vs u0)=0.837
+    exact_score          E2=0.0246   bw=4.0
+    smoothed_log_bw2     E2=0.1052   bw=2.0
+    smoothed_log_bw4     E2=0.0587   bw=4.0
+    smoothed_log_bw6     E2=0.0530   bw=6.0
+    tikhonov_optimal     E2=0.0090   lam=1e-08
+    best smoothed-log: bw=6.0  E2=0.0530  E_fwd=0.0229
+
+Case tophat  T=0.05  n_steps=50  forward-contrast(max-min ratio vs u0)=1.000
+    exact_score          E2=0.1254   bw=4.0
+    smoothed_log_bw2     E2=0.1426   bw=2.0
+    smoothed_log_bw4     E2=0.1605   bw=4.0
+    smoothed_log_bw6     E2=0.1775   bw=6.0
+    tikhonov_optimal     E2=0.1091   lam=1e-08
+    best smoothed-log: bw=2.0  E2=0.1426  E_fwd=0.0076

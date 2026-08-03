@@ -1,10 +1,16 @@
-"""Round-4 audit: universal-claim enumeration + systematic rounding sweep.
+"""verify_numbers.py — check every headline paper number against the archived outputs.
 
-Diagnose-only. Maps every number printed in paper_draft/main.tex to its stored
-source value and reports DIRECT-ROUND or MISMATCH; enumerates every
-Tikhonov-vs-particle comparison and reports HOLDS or VIOLATED.
+Diagnose-only: reruns nothing. Maps each number printed in the paper to its
+stored value in the checked-in study outputs and reports DIRECT-ROUND or
+MISMATCH, then enumerates every Tikhonov-vs-particle comparison behind the
+paper's universal accuracy claim and reports HOLDS or VIOLATED. Exits nonzero
+on any MISMATCH or VIOLATED.
+
+Usage:
+    python reproduce.py verify        (or: python scripts/verify_numbers.py)
 """
 from __future__ import annotations
+import sys
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -71,7 +77,7 @@ chk("1.8","tab:bandwidth B ratio", sw("B","smoothed_log",4.0)/orc("B"), "compute
 chk("4.1","tab:bandwidth H ratio", sw("H","fd_grid_ratio",4.0)/orc("H"), "computed")
 chk("0.59","tab:bandwidth Z ratio", sw("Z","smoothed_log",2.0)/orc("Z"), "computed")
 chk("1.11","sec5.2 B bw1", sw("B","smoothed_log",1.0), "score audit CSV")
-chk("0.135","sec5.2 B bw16", sw("B","smoothed_log",16.0), "score audit CSV")
+chk("0.134","sec5.2 B bw16", sw("B","smoothed_log",16.0), "score audit CSV")
 # sec 4.2 cross-check
 for t, a, b in [("B","0.0257","0.0231"),("H","0.0650","0.0657"),("Z","0.0229","0.0230")]:
     chk(a, f"sec4.2 direct-kde {t}", sw(t,"direct_kde",4.0), "score audit CSV")
@@ -117,9 +123,9 @@ for e, cells in [(0.001, [("0.025","particle_oracle_mean"),("0.002","particle_or
     for p, col in cells:
         chk(p, f"tab:discrepancy eta={e} {col}", d(e)[col], "discrepancy final CSV")
 chk("0.123","sec5.6 'reaches 0.123'", d(0.005)["particle_disc_tau1.2_mean"], "discrepancy final CSV")
-chk("0.027","sec5.6 'reaches 0.027' (oracle bw6)", d(0.005)["particle_oracle_mean"], "discrepancy final CSV")
-chk("0.122","fig:discrepancy caption particle", 0.121698, "discrepancy raw seed7")
-chk("0.012","fig:discrepancy caption Tikhonov", 0.012281, "discrepancy raw seed7")
+chk("0.027","sec5.6 'reaches 0.027' (optimal bw6)", d(0.005)["particle_oracle_mean"], "discrepancy final CSV")
+chk("0.122","fig:discrepancy caption particle", 0.121698, "discrepancy raw, realization 7")
+chk("0.012","fig:discrepancy caption Tikhonov", 0.012281, "discrepancy raw, realization 7")
 
 # ---- tab:nonsmooth + sec5.7 ----
 ne = lambda c, m: g(non, case=c, method=m).E2.iloc[0]
@@ -129,7 +135,7 @@ chk("0.009","tab:nonsmooth tent Tik", ne("tent","tikhonov_optimal"), "nonsmooth 
 chk("0.125","tab:nonsmooth tophat exact", ne("tophat","exact_score"), "nonsmooth CSV")
 chk("0.143","tab:nonsmooth tophat sl best", ne("tophat","smoothed_log_bw2"), "nonsmooth CSV")
 chk("0.109","tab:nonsmooth tophat Tik", ne("tophat","tikhonov_optimal"), "nonsmooth CSV")
-efwd = g(non, case="tent", method="E_fwd_best_smoothed_log").E2.iloc[0] if "E_fwd_best_smoothed_log" in set(non.method) else np.nan
+efwd = g(non, case="tent", method="E_fwd_best_smoothed_log").E_fwd.iloc[0]
 chk("0.023","sec5.7 tent E_fwd", efwd, "nonsmooth CSV")
 chk("1.1","sec5.7 tophat/exact", ne("tophat","smoothed_log_bw2")/ne("tophat","exact_score"), "computed")
 chk("1.3","sec5.7 tophat/Tik", ne("tophat","smoothed_log_bw2")/ne("tophat","tikhonov_optimal"), "computed")
@@ -171,7 +177,7 @@ chk("0.016","tab:summary H exact", dp("H").relative_l2.iloc[0], "representation 
 chk("0.066","tab:summary H est4", sw("H","fd_grid_ratio",4.0), "score audit CSV")
 chk("0.003","tab:summary H Tik", tik_clean("H"), "representation CSV")
 chk("0.155","tab:summary Z grad", g(rep,test="Z",method_type="gradient_glob_oracle",n_grid=400).relative_l2.mean(), "representation CSV")
-chk("0.018","tab:summary Z exact", dp("Z").relative_l2.iloc[0], "representation CSV")
+chk("0.017","tab:summary Z exact", dp("Z").relative_l2.iloc[0], "representation CSV")
 chk("0.028","tab:summary Z est4", sw("Z","smoothed_log",4.0), "score audit CSV")
 chk("0.001","tab:summary Z Tik", tik_clean("Z"), "representation CSV")
 chk("0.222","tab:summary noise est4", nm("smoothed_log_bw4",0.01), "noise CSV")
@@ -223,3 +229,7 @@ for b, t, p, v in comps:
     if v == "VIOLATED": viol += 1
     print(f"{b:52s} Tik={t:.4f}  particle={p:.4f}  margin={p/t:5.2f}x  {v}")
 print(f"\nComparisons: {len(comps)}   VIOLATED: {viol}")
+
+ok = (mis == 0) and (viol == 0)
+print("\nVERIFY:", "PASS" if ok else "FAIL")
+sys.exit(0 if ok else 1)

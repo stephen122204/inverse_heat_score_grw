@@ -1,0 +1,26 @@
+NOISE STUDY — 25 realizations (seeds 0..24), Test B, N=10000
+alpha=0.01 n_grid=400 dt=0.001 domain[0,1] Neumann epsilon=1e-8
+noise: u_obs + eta*max(u_obs)*N(0,1), rng=default_rng(seed)
+eta=0 is deterministic (1 value, std=0).
+
+method                  eta      mean       std       p10       p90    n
+------------------------------------------------------------------------
+smoothed_log_bw4      0.000    0.0120    0.0000    0.0120    0.0120    1
+smoothed_log_bw4      0.001    0.0306    0.0059    0.0243    0.0370   25
+smoothed_log_bw4      0.005    0.1235    0.0265    0.0944    0.1486   25
+smoothed_log_bw4      0.010    0.2221    0.0473    0.1720    0.2828   25
+
+smoothed_log_bw6      0.000    0.0256    0.0000    0.0256    0.0256    1
+smoothed_log_bw6      0.001    0.0256    0.0002    0.0254    0.0258   25
+smoothed_log_bw6      0.005    0.0273    0.0009    0.0262    0.0280   25
+smoothed_log_bw6      0.010    0.0319    0.0023    0.0292    0.0343   25
+
+fd_grid_ratio_bw4     0.000    0.0133    0.0000    0.0133    0.0133    1
+fd_grid_ratio_bw4     0.001    0.4628    0.0595    0.3882    0.5353   25
+fd_grid_ratio_bw4     0.005    0.5254    0.0650    0.4570    0.5849   25
+fd_grid_ratio_bw4     0.010    0.5524    0.0764    0.4794    0.6734   25
+
+tikhonov_optimal      0.000    0.0010    0.0000    0.0010    0.0010    1
+tikhonov_optimal      0.001    0.0039    0.0009    0.0026    0.0051   25
+tikhonov_optimal      0.005    0.0160    0.0024    0.0129    0.0185   25
+tikhonov_optimal      0.010    0.0209    0.0025    0.0176    0.0245   25

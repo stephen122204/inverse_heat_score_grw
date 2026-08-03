@@ -20,6 +20,13 @@ compatibility shim, so it runs on both NumPy 1.26.x and 2.x.
 
 ## Reproducing Numerical Results
 
+Check every number reported in the paper against the checked-in study
+outputs (runs in seconds, no simulation):
+
+```bash
+python reproduce.py verify
+```
+
 One command reruns every experiment behind the paper's tables and figures,
 then regenerates the twelve shipped figures from the resulting CSVs (no
 figure hardcodes any result):
@@ -42,9 +49,8 @@ initialization, analytic/KDE scores, no RNG), so those experiment CSVs are
 bit-for-bit reproducible. The studies that draw random observation noise use
 fixed realizations: `0-24` for the reported noise and discrepancy tables, and
 `0-2` for the superseded validation-stage reconciliation task; both are
-reproducible in their realization means. A single source of truth for every
-headline number lives in `FROZEN_NUMBERS.md`, which maps each printed value
-to its archived output.
+reproducible in their realization means. `python reproduce.py verify` checks
+every headline number against the archived outputs.
 
 ## Repository Layout
 
@@ -52,13 +58,13 @@ to its archived output.
 configs/                     experiment configs (YAML)
 src/invheat_grw/             library modules (fields, methods, estimators, config)
 scripts/run_*.py             the experiment studies listed above
+scripts/verify_numbers.py    number checks behind reproduce.py verify
 reproduce.py                 one-shot pipeline (studies + figures)
 make_figures.py              core figures from archived CSVs
 make_new_figures.py          noise-band, representation-failure, nonsmooth figures
 make_discrepancy_figure.py   discrepancy figure
 figures/                     the twelve shipped figures
-outputs/                     timestamped study outputs (archived CSVs)
-FROZEN_NUMBERS.md            ledger mapping every printed number to its archive
+outputs/                     archived study outputs behind the tables and figures
 ```
 
 ## Running Your Own Experiments

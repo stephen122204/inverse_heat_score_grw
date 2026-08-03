@@ -1,0 +1,33 @@
+DISCREPANCY-PRINCIPLE EXPERIMENT — final selection (with safety factor)
+Test B, N=10000, smoothed-log; alpha=0.01 n_grid=400 dt=0.001 [0,1] Neumann eps=1e-8
+noise: g+eta*max(g)*N(0,1), rng=default_rng(seed), seeds 0..24
+delta_nominal(eta) = eta*max(g_clean)*sqrt(dx*n_grid)/||g_clean||_2 (same per seed, no u0)
+  max(g_clean)=0.82509 ||g_clean||=0.34205  delta_nominal = 0.0024@eta=0.001, 0.0121@eta=0.005, 0.0242@eta=0.01
+Morozov target = tau * delta_nominal. tau=1.0 is the literal expected-noise level;
+tau=1.2 is the conventional safety factor (target above the flat residual floor).
+u0 used ONLY for E2 scoring; never in delta or selection.
+VALIDATION vs first run: particle-oracle max|dE2|=0.0e+00, tik-oracle max|dE2|=9.7e-17, particle-disc(tau1) max|dE2|=0.0e+00
+
+Headline E2 (mean +/- std, 25 seeds). 'disc' = discrepancy-tuned (realistic).
+   eta |   part oracle bw     part disc bw |   Tik oracle l     Tik disc l   (tau)
+ 0.001 | 0.0251+/-0.0016  0.0306+/-0.0059 | 0.0039+/-0.0009  0.1653+/-0.3738   (tau=1.0)
+ 0.001 | 0.0251+/-0.0016  0.0306+/-0.0059 | 0.0039+/-0.0009  0.0038+/-0.0009   (tau=1.2)
+
+ 0.005 | 0.0273+/-0.0009  0.1235+/-0.0265 | 0.0160+/-0.0024  0.8118+/-1.8765   (tau=1.0)
+ 0.005 | 0.0273+/-0.0009  0.1235+/-0.0265 | 0.0160+/-0.0024  0.0126+/-0.0027   (tau=1.2)
+
+ 0.010 | 0.0319+/-0.0023  0.2221+/-0.0473 | 0.0209+/-0.0025  1.6232+/-3.7537   (tau=1.0)
+ 0.010 | 0.0319+/-0.0023  0.1107+/-0.1109 | 0.0209+/-0.0025  0.0209+/-0.0025   (tau=1.2)
+
+Chosen parameters (mean over seeds):
+   eta | part oracle bw / disc bw (tau1.0, tau1.2) | Tik oracle l / disc l (tau1.0, tau1.2)
+ 0.001 | 5.44 / 4.00, 4.00 | 1.00e-03 / 3.56e-05, 1.05e-03
+ 0.005 | 6.00 / 4.00, 4.00 | 4.37e-03 / 1.37e-04, 3.05e-03
+ 0.010 | 6.00 / 4.00, 5.28 | 9.12e-03 / 1.98e-04, 1.00e-02
+
+RECONCILIATION: oracle-lambda Tikhonov 25-seed means must be 0.004/0.016/0.021:
+  eta=0.001: oracle-l Tikhonov mean E2 = 0.0039
+  eta=0.005: oracle-l Tikhonov mean E2 = 0.0160
+  eta=0.01: oracle-l Tikhonov mean E2 = 0.0209
+
+Figure (tau=1.2, eta=0.005): rep seed 7 (disc-particle E2=0.1217 ~ mean 0.1235); mean disc bw=4.00 vs min-error bw=6
