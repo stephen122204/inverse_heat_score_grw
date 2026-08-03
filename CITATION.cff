@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the paper below."
+title: >-
+  Score-guided density particles companion code: Score-Guided Density
+  Particles for Backward Heat Reconstruction
+authors:
+  - family-names: Abkin
+    given-names: Stephen
+  - family-names: Daripa
+    given-names: Prabir
+# TODO(license): no license chosen yet; update before public release.
+license: NOASSERTION
+preferred-citation:
+  type: article
+  title: Score-Guided Density Particles for Backward Heat Reconstruction
+  authors:
+    - family-names: Abkin
+      given-names: Stephen
+    - family-names: Daripa
+      given-names: Prabir
+  year: 2026
+  notes: "arXiv identifier: TBD (placeholder until posted)"
