@@ -5,6 +5,11 @@ Each method integrates glob positions backward from t = T to t = 0
 by running n_steps of size dt.  After integration, the field is
 reconstructed from the final glob positions.
 
+Manuscript labels (draft): the naive update is `eq:naive` (`sec:naive`);
+the probability-flow ODE update is `eq:pfode`; the reverse-time SDE update
+is `eq:reverse_sde`; the density-particle method is Algorithm
+`alg:density_particle` (`sec:density_formulation`).
+
 The method names below use the label ``oracle`` for the exact analytic
 score; the paper calls this the exact score.
 

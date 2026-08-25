@@ -4,6 +4,10 @@ metrics.py — Quantitative metrics for evaluating backward GRW reconstructions.
 All metrics use the discrete L2 norm with grid spacing dx:
     L2_h(f) = sqrt( dx * sum(f_i^2) )
 
+Manuscript labels (draft): relative L2 error `eq:rel_L2`; the
+forward-consistency diagnostic is `eq:fwd_consistency`
+(`sec:forward_consistency`).
+
 Metrics computed per method:
   - l2_error              : L2_h(candidate - true_u0)
   - relative_l2           : l2_error / L2_h(true_u0)

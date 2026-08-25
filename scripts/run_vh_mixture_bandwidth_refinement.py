@@ -1,6 +1,8 @@
 """
 run_vh_mixture_bandwidth_refinement.py
 
+Manuscript labels (draft): `fig:vh_mixture` (`sec:mixture_analysis`).
+
 Final pre-writeup bandwidth refinement for the VH (variable-coefficient heat,
 Gaussian mixture IC) case.
 

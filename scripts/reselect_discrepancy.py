@@ -3,6 +3,9 @@ reselect_discrepancy.py — re-do the Morozov parameter selection from the alrea
 computed sweeps, adding the standard safety factor tau, and report both tau=1.0
 (literal expected-noise) and tau=1.2 (conventional safety factor).
 
+Manuscript labels (draft): `tab:discrepancy`, `fig:discrepancy`
+(`sec:discrepancy`).
+
 Why: with delta set EXACTLY to the expected noise norm (tau=1), the Tikhonov
 forward residual is flat at the noise floor across lambda in [1e-8,1e-3], sitting
 right at delta. Per-seed noise fluctuations then push "smallest lambda with

@@ -1,4 +1,4 @@
-"""verify_numbers.py — check every headline paper number against the archived outputs.
+"""verify_numbers.py — check every reported paper number against the archived outputs.
 
 Diagnose-only: reruns nothing. Maps each number printed in the paper to its
 stored value in the checked-in study outputs and reports DIRECT-ROUND or

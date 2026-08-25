@@ -15,42 +15,44 @@ python -m venv .venv && source .venv/bin/activate   # tested with Python 3.11
 pip install -r requirements.txt                     # pinned exact versions
 ```
 
-`np.trapz` was removed in NumPy 2.0; the code uses a `np.trapezoid`
+`np.trapz` was removed in NumPy 2.0. The code uses a `np.trapezoid`
 compatibility shim, so it runs on both NumPy 1.26.x and 2.x.
 
 ## Reproducing Numerical Results
 
-Check every number reported in the paper against the checked-in study
-outputs (runs in seconds, no simulation):
+Three commands cover everything:
 
 ```bash
-python reproduce.py verify
+python reproduce.py verify           # check every reported number against the archived outputs
+python reproduce.py                  # rerun every experiment, then rebuild all twelve figures
+python reproduce.py --figures-only   # rebuild the figures from existing CSVs
 ```
 
-One command reruns every experiment behind the paper's tables and figures,
-then regenerates the twelve shipped figures from the resulting CSVs (no
-figure hardcodes any result):
+`verify` runs in seconds and needs no simulation. The full run executes the
+studies below in order, then regenerates the twelve shipped figures from the
+resulting CSVs. No figure hardcodes any result.
 
-```bash
-python reproduce.py                  # all CSVs -> outputs/, all figures -> figures/
-python reproduce.py --figures-only   # rebuild figures from existing CSVs
-```
+| Study | Wall clock |
+|---|---|
+| grid-by-count representation and convergence sweep | ~26 s |
+| time-step sweep | ~2 s |
+| score-estimation and bandwidth audit | ~56 min |
+| validation stage | ~4 min |
+| 25-realization noise study | ~13 min |
+| discrepancy-principle run and tau = 1.2 reselection | ~28 min |
+| non-smooth cases | ~8 s |
+| variable-coefficient audit | ~44 s |
+| VH-mixture bandwidth refinement | ~16 s |
+| figure rebuild (all twelve figures) | ~11 s |
 
-The studies, in the order they run: the grid-by-count representation and
-convergence sweep, the time-step sweep, the score-estimation and bandwidth
-audit, the validation stage, the 25-realization noise study, the
-discrepancy-principle run with its tau = 1.2 reselection, the non-smooth
-cases, the variable-coefficient audit, and the VH-mixture bandwidth
-refinement. Figures are then rebuilt via `make_figures.py --only ...`,
-`make_new_figures.py`, and `make_discrepancy_figure.py`.
+Times were measured on an Apple-Silicon laptop. A full rerun totals about
+1 h 45 min.
 
 **Determinism.** The density-particle method is deterministic (quantile
 initialization, analytic/KDE scores, no RNG), so those experiment CSVs are
-bit-for-bit reproducible. The studies that draw random observation noise use
-fixed realizations: `0-24` for the reported noise and discrepancy tables, and
-`0-2` for the superseded validation-stage reconciliation task; both are
-reproducible in their realization means. `python reproduce.py verify` checks
-every headline number against the archived outputs.
+bit-for-bit reproducible. The noise-driven studies use fixed realizations
+(`0-24` for the noise and discrepancy tables, `0-2` for the superseded
+validation-stage task) and are reproducible in their realization means.
 
 ## Repository Layout
 
@@ -80,3 +82,10 @@ Each run creates a timestamped folder under `outputs/` containing
 `metrics_summary.csv` (per-method error metrics), `run_summary.txt` (a
 human-readable report), `config_used.yaml` (the exact configuration used),
 and the diagnostic plots and saved arrays.
+
+## Acknowledgments
+
+**Principal Investigator:** [Professor Prabir Daripa](https://artsci.tamu.edu/mathematics/contact/profiles/prabir-daripa.html) — Texas A&M University, Department of Mathematics
+
+Other projects from the Daripa Research Group are available on the
+[group's GitHub page](https://github.com/Daripa-Research-Group).

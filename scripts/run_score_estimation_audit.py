@@ -1,6 +1,9 @@
 """
 run_score_estimation_audit.py — Score-estimation method audit.
 
+Manuscript labels (draft): `tab:bandwidth`, `fig:bandwidth_sweep`
+(`sec:score_estimation`, `sec:bandwidth_sweep`).
+
 Scientific question:
     Can direct KDE derivative score (direct_kde), with larger bandwidth
     (factor 8–16), close the estimated-density vs oracle-density gap that
@@ -818,7 +821,7 @@ def plot_field_comparison_best(
 
 def _verdict(test: str, oracle_rl2: float, direct_kde_rl2: float,
              fd_rl2: float) -> str:
-    """Return GO / CONDITIONAL_GO / STOP based on user spec."""
+    """Return GO / CONDITIONAL_GO / STOP based on the study's decision thresholds."""
     if not np.isfinite(oracle_rl2) or not np.isfinite(direct_kde_rl2):
         return "PIVOT – insufficient data"
     ratio = direct_kde_rl2 / oracle_rl2

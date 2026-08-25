@@ -1,6 +1,9 @@
 """
 make_new_figures.py — representation-failure, noise-band, and nonsmooth figures.
 
+Manuscript labels (draft): `fig:representation_failure`, `fig:noise`,
+`fig:nonsmooth`.
+
 All data come from real runs:
   fig_representation_failure_visual : Test B exact-score density-particle
         (N=5000, bw4, E2~0.0069) vs gradient-glob (E2~0.175), reproduced inline

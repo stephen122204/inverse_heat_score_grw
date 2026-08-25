@@ -2,6 +2,8 @@
 run_dt_sweep_glob.py — time-step refinement sweep for the exact-score
 gradient-glob reconstruction (Test B), with a density-particle control.
 
+Manuscript labels (draft): `sec:representation_evidence`.
+
 Regenerates the round-3 sweep pinned in FROZEN_NUMBERS.md: Test B, alpha=0.01,
 n_grid=400, globs_per_jump=80, dt in {0.002, 0.001, 0.0005, 0.00025}; density
 control at N=5000, KDE reconstruction, bandwidth factor 4.  Backs the

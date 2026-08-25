@@ -9,6 +9,9 @@ the exact solution under free-space heat diffusion is another Gaussian:
 where
     sigma_t^2 = sigma0^2 + 2 * alpha * t.
 
+Manuscript labels (draft): the constant-coefficient problem is `eq:heat`;
+these fields define the test cases of `sec:setup`.
+
 This module provides:
   - make_grid         : uniform 1-D spatial grid on [x_min, x_max]
   - true_u0           : exact initial Gaussian

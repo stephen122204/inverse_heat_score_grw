@@ -2,6 +2,9 @@
 run_discrepancy_principle.py — Realistic parameter choice via the discrepancy
 principle (Morozov), for both Tikhonov's lambda and the particle bandwidth.
 
+Manuscript labels (draft): `tab:discrepancy`, `fig:discrepancy`
+(`sec:discrepancy`); the tau reselection lives in reselect_discrepancy.py.
+
 The paper tunes both lambda and bandwidth against the known true solution
 (best-case vs best-case). This experiment instead chooses BOTH parameters by
 matching the reconstruction's forward residual to the noise level delta, using
@@ -151,7 +154,7 @@ def main():
             # particle discrepancy bandwidth.
             # The smoothed-log forward residual is U-shaped in bandwidth (noisy
             # under-smoothing -> high residual; over-smoothing -> high residual),
-            # so it is generally NOT monotone. Per the spec:
+            # so it is generally NOT monotone. Selection rule:
             #   - monotone residual: standard Morozov (smallest bw with r>=delta,
             #     bisection-refined between bracketing grid factors);
             #   - non-monotone residual: pick the bw minimizing |r-delta| on the

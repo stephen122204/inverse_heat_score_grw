@@ -4,6 +4,9 @@ baselines.py — Classical spectral inversion baselines for the heat equation.
 These are NOT particle methods.  They serve as accuracy ceilings / reference
 solutions for comparing against the GRW-based inverse methods.
 
+Manuscript labels (draft): spectral cutoff `eq:spectral_cutoff`, Tikhonov
+`eq:tikhonov` (`sec:baselines`).
+
 Two baselines are provided:
 
 1. spectral_cutoff_inverse

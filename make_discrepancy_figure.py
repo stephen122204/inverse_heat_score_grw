@@ -1,5 +1,6 @@
 """
-make_discrepancy_figure.py — the discrepancy-principle comparison figure.
+make_discrepancy_figure.py — the discrepancy-principle comparison figure
+(manuscript label, draft: `fig:discrepancy`).
 
 Reads the latest outputs/discrepancy_principle_* and builds a two-panel figure:
  (a) realistic reconstruction overlay at eta=0.005 for the representative

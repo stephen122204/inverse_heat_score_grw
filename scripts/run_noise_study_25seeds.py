@@ -1,7 +1,9 @@
 """
 run_noise_study_25seeds.py — Noise study with 25 realizations and reported spread.
 
-Task 3.1 of the figure/experiment spec.  Reuses the EXISTING pipeline
+Manuscript labels (draft): `tab:noise`, `fig:noise` (`sec:noise`).
+
+Reuses the EXISTING pipeline
 (run_density_particle_estimated_score_deterministic + tikhonov_inverse) with the
 frozen configuration; the ONLY change vs. the original 3-seed validation noise
 study is the number of realizations (3 -> 25, seeds 0..24).

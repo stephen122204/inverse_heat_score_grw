@@ -3,6 +3,9 @@ run_variable_coefficient_audit.py
 
 Variable-coefficient heat equation experiment for inverse_heat_score_grw.
 
+Manuscript labels (draft): `tab:variable`, `fig:variable_field`,
+`fig:variable_results` (`sec:variable_results`).
+
 Solves  u_t = ∂_x( a(x) u_x )  on [0,1] with Neumann BCs, where
     a(x) = alpha0 * (1 + beta * sin(2*pi*x)).
 
