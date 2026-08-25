@@ -1,6 +1,8 @@
 """
 run_nonsmooth_case.py — non-smooth test cases (tent and top-hat).
 
+Manuscript labels (draft): `tab:nonsmooth`, `fig:nonsmooth` (`sec:nonsmooth`).
+
 Adds a non-smooth initial condition to the constant-coefficient backward-heat
 study, run through the IDENTICAL production pipeline (density-particle with
 smoothed-log estimator), to show the numbers are not an artifact of smoothness.

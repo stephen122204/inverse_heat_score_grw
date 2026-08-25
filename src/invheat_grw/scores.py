@@ -1,6 +1,10 @@
 """
 scores.py — Score function evaluation for the reverse-time SDE.
 
+Manuscript labels (draft): the estimators smoothed_log_score,
+log_density_fd_score, and direct_kde_score are `eq:smoothed_log`,
+`eq:fd_score`, and `eq:direct_kde_score` (`sec:score_estimation`).
+
 The score is:
     s(x, t) = partial_x log u(x, t) = u_x(x, t) / u(x, t)
 

@@ -1,6 +1,9 @@
 """
 run_representation_audit.py — Representation consistency audit.
 
+Manuscript labels (draft): `tab:representation`, `tab:summary`,
+`fig:representation_convergence`, `fig:representation_failure`.
+
 Purpose:
     Test whether the gradient-glob oracle plateau (~0.15–0.24 relative L2) is
     caused by a representation mismatch, or by irreducible reconstruction /

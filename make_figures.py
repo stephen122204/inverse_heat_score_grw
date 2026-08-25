@@ -1,6 +1,12 @@
 """
 make_figures.py — Generate all paper figures FROM REAL EXPERIMENT OUTPUT.
 
+Manuscript labels (draft) per --only key: naive `fig:naive`, convergence
+`fig:representation_convergence`, loop `fig:density_loop`, bandwidth
+`fig:bandwidth_sweep`, particle_count `fig:particle_count`, variable_field
+`fig:variable_field`, variable_results `fig:variable_results`, vh_mixture
+`fig:vh_mixture`.
+
 This script reads the CSV files written by the experiment scripts in
 ``outputs/`` and regenerates every quantitative figure so that the figures
 match the numbers in the paper tables exactly.  Field-illustration figures

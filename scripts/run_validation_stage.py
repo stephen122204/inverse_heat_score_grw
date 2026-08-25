@@ -1,6 +1,8 @@
 """
 run_validation_stage.py — Validation stage for density-particle estimated-score method.
 
+Manuscript labels (draft): `fig:particle_count` (`sec:particle_count`).
+
 Scientific questions:
   TASK 1 — N-convergence on Test B (Gaussian T=0.15)
       Does rel_L2 improve as N increases from 5000 → 10000 → 20000?

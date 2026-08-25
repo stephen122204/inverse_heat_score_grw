@@ -18,6 +18,12 @@ It becomes exact in the limit gradient_globs_per_jump → ∞.
 
 The GRW inverse method moves these globs according to a reverse-time SDE and
 then reconstructs the field at the end of backward integration.
+
+Manuscript labels (draft): this gradient-glob representation and its
+refinement behavior are the subject of the representation audit
+(`tab:representation`, `fig:representation_convergence`,
+`fig:representation_failure`) and the time-step sweep of
+`sec:representation_evidence`.
 """
 
 from __future__ import annotations
