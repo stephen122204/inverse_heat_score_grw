@@ -65,7 +65,11 @@ def main() -> int:
             print(f"unknown study {args.run!r}; choose from "
                   f"{sorted(schema.STUDIES)}")
             return 2
-        schema.assert_frozen()   # raises ProtocolNotFrozen while PROPOSED
+        try:
+            schema.assert_frozen()
+        except schema.ProtocolNotFrozen as refusal:
+            print(f"refused: {refusal}", file=sys.stderr)
+            return 3
         raise NotImplementedError(
             "study execution is implemented with the frozen campaign build"
         )
