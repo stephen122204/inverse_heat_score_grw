@@ -22,7 +22,8 @@ particle oracle/disc and Tikhonov oracle reproduce the original raw.csv.
 
 from __future__ import annotations
 
-import sys, math, glob, warnings
+import argparse
+import sys, math, warnings
 from datetime import datetime
 from pathlib import Path
 
@@ -59,11 +60,25 @@ def patch(cfg: Config, **ov) -> Config:
 
 
 def main():
-    # [0-9] guard: skip the discrepancy_principle_final_* dirs this script itself
-    # writes — they lack discrepancy_bw_curve.csv and would be picked by max()
-    # because "f" sorts after every digit.
-    src = max((Path(h) for h in glob.glob(str(REPO / "outputs" / "discrepancy_principle_[0-9]*"))
-               if Path(h).is_dir()), key=lambda p: p.name)
+    ap = argparse.ArgumentParser()
+    ap.add_argument(
+        "--source-dir",
+        required=True,
+        help="explicit discrepancy sweep directory containing discrepancy_bw_curve.csv",
+    )
+    args = ap.parse_args()
+    src = Path(args.source_dir)
+    if not src.is_absolute():
+        src = REPO / src
+    src = src.resolve()
+    outputs = (REPO / "outputs").resolve()
+    try:
+        src.relative_to(outputs)
+    except ValueError as exc:
+        raise ValueError(f"--source-dir must be inside {outputs}: {src}") from exc
+    for required in ("discrepancy_bw_curve.csv", "discrepancy_raw.csv"):
+        if not (src / required).is_file():
+            raise FileNotFoundError(f"Incomplete discrepancy sweep: missing {src / required}")
     bw = pd.read_csv(src / "discrepancy_bw_curve.csv")
     raw_orig = pd.read_csv(src / "discrepancy_raw.csv")
 
