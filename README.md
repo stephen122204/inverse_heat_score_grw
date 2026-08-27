@@ -87,6 +87,25 @@ Each run creates a timestamped folder under `outputs/` containing
 human-readable report), `config_used.yaml` (the exact configuration used),
 and the diagnostic plots and saved arrays.
 
+### Canonical Neumann score estimator
+
+The repaired analysis branch uses one mass-preserving Neumann heat kernel and
+its analytic derivative. It is opt-in while the bandwidth studies are being
+rerun and does not alter the archived paper outputs:
+
+```python
+run_density_particle_estimated_score_deterministic(
+    observed, x, cfg, n_particles=5000,
+    recon_method="neumann_kde",
+    score_method="neumann_kde",
+    bandwidth=0.02,       # physical units; never inferred from grid spacing
+    epsilon=1e-8,
+)
+```
+
+Run its acceptance tests with
+`PYTHONPATH=src python -m unittest -v tests.test_neumann_kernels`.
+
 ## Acknowledgments
 
 **Principal Investigator:** [Professor Prabir Daripa](https://artsci.tamu.edu/mathematics/contact/profiles/prabir-daripa.html) — Texas A&M University, Department of Mathematics

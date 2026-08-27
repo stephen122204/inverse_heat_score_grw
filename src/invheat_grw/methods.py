@@ -70,6 +70,7 @@ from .scores import (
     log_density_fd_score,
     smoothed_log_score,
 )
+from .neumann_kernels import neumann_kde_density_derivative, neumann_kde_score
 
 # numpy>=2.0 renamed np.trapz -> np.trapezoid (np.trapz removed in 2.x).
 _trapz = getattr(np, "trapezoid", None) or getattr(np, "trapz")  # type: ignore[attr-defined]
@@ -205,14 +206,16 @@ def _reconstruct_density_particles(
     """
     Reconstruct field u on x_grid from density particle positions.
 
-    The reconstruction preserves total mass (integral = total_mass).
+    Histogram binning and the Neumann KDE preserve particle mass.  The legacy
+    free-space KDE is retained for archived-paper reproducibility but loses
+    the Gaussian tails that extend beyond a finite domain.
 
     Parameters
     ----------
     positions    : (n_particles,) array of particle x-coordinates.
     total_mass   : target total mass for the reconstruction.
     x_grid       : uniform spatial grid.
-    recon_method : "histogram" or "kde".
+    recon_method : "histogram", legacy free-space "kde", or "neumann_kde".
     bandwidth    : KDE bandwidth in x-units (ignored for histogram).
                    If <= 0 for KDE, falls back to Scott's rule.
 
@@ -243,8 +246,27 @@ def _reconstruct_density_particles(
         u_recon = np.sum(kernels, axis=1) * (total_mass / N)
         return u_recon
 
+    elif recon_method == "neumann_kde":
+        bw = bandwidth
+        if bw <= 0.0:
+            std_pos = float(np.std(positions))
+            bw = 1.06 * std_pos * N ** (-0.2) if std_pos > 0.0 else dx
+        weights = np.full(N, total_mass / N, dtype=float)
+        u_recon, _, _ = neumann_kde_density_derivative(
+            x_grid,
+            positions,
+            weights,
+            float(x_grid[0]),
+            float(x_grid[-1]),
+            bw,
+        )
+        return u_recon
+
     else:
-        raise ValueError(f"Unknown recon_method: {recon_method!r}. Use 'histogram' or 'kde'.")
+        raise ValueError(
+            f"Unknown recon_method: {recon_method!r}. "
+            "Use 'histogram', 'kde', or 'neumann_kde'."
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -828,7 +850,7 @@ def run_density_particle_oracle_score_deterministic(
     x_grid          : uniform spatial grid.
     cfg             : experiment config.
     n_particles     : number of density particles.
-    recon_method    : "histogram" or "kde".
+    recon_method    : "histogram", legacy free-space "kde", or "neumann_kde".
     bandwidth_factor: KDE bandwidth = bandwidth_factor * dx.
                       Ignored for histogram.
 
@@ -999,6 +1021,10 @@ def run_density_particle_estimated_score_deterministic(
         reconstruct u on grid → Gaussian smooth (sigma = smooth_sigma_factor * bw)
         → log(u+ε) → np.gradient → interpolate.  Suppresses high-frequency
         KDE noise before differentiating.
+    "neumann_kde":
+        reconstruct with one mass-preserving Neumann heat kernel and evaluate
+        its analytic derivative.  No second filter or finite difference is
+        applied.  This canonical branch requires recon_method="neumann_kde".
 
     NaN/Inf scores are NEVER silently replaced with zero.
 
@@ -1009,21 +1035,34 @@ def run_density_particle_estimated_score_deterministic(
     cfg                : experiment config.
     n_particles        : number of density particles.
     rng                : random generator (unused; accepted for API symmetry).
-    recon_method       : "histogram" or "kde".
-    bandwidth          : explicit KDE bandwidth in x-units.  If None,
-                         bandwidth = bandwidth_factor * dx.
+    recon_method       : "histogram", legacy "kde", or "neumann_kde".
+    bandwidth          : explicit KDE bandwidth in x-units.  Required for the
+                         canonical Neumann method.  Legacy methods use
+                         bandwidth_factor * dx when it is None.
     bandwidth_factor   : KDE bandwidth as a multiple of dx.
     epsilon            : denominator regularization floor.
     scale_epsilon_by_peak : if True, epsilon_actual = epsilon * max(u_recon).
     score_clipping     : if not None, clip |s| to score_clipping.
     save_snapshots     : if True, save field snapshots at key steps.
     score_method       : one of "fd_grid_ratio", "direct_kde", "log_density_fd",
-                         "smoothed_log".
+                         "smoothed_log", "neumann_kde".
     smooth_sigma_factor: for "smoothed_log" only — smooth sigma = factor * bw.
     """
-    _VALID_SCORE_METHODS = ("fd_grid_ratio", "direct_kde", "log_density_fd", "smoothed_log")
+    _VALID_SCORE_METHODS = (
+        "fd_grid_ratio", "direct_kde", "log_density_fd", "smoothed_log", "neumann_kde"
+    )
     if score_method not in _VALID_SCORE_METHODS:
         raise ValueError(f"score_method must be one of {_VALID_SCORE_METHODS}, got {score_method!r}")
+    if score_method == "neumann_kde" and recon_method != "neumann_kde":
+        raise ValueError(
+            "score_method='neumann_kde' requires recon_method='neumann_kde' so "
+            "the transported density and analyzed score use the same single kernel"
+        )
+    if score_method == "neumann_kde" and bandwidth is None:
+        raise ValueError(
+            "score_method='neumann_kde' requires an explicit physical bandwidth; "
+            "the canonical method does not silently couple h to the grid spacing"
+        )
     alpha = cfg.heat.alpha
     dt = cfg.heat.dt
     n_steps = cfg.n_steps
@@ -1049,12 +1088,14 @@ def run_density_particle_estimated_score_deterministic(
         "direct_kde":     "density_est_direct_kde",
         "log_density_fd": "density_est_log_density_fd",
         "smoothed_log":   "density_est_smoothed_log",
+        "neumann_kde":    "density_est_neumann_kde",
     }
     _SCORE_EST_TYPES = {
         "fd_grid_ratio":  "density_particle_estimated_grid_ratio_raw" if epsilon == 0.0 else "density_particle_estimated_grid_ratio_epsilon",
         "direct_kde":     "density_particle_estimated_direct_kde",
         "log_density_fd": "density_particle_estimated_log_density_fd",
         "smoothed_log":   "density_particle_estimated_smoothed_log",
+        "neumann_kde":    "density_particle_estimated_neumann_kde",
     }
     method_name = f"{_SCORE_METHOD_NAMES[score_method]}_{eps_tag}"
     score_est_type = _SCORE_EST_TYPES[score_method]
@@ -1069,7 +1110,7 @@ def run_density_particle_estimated_score_deterministic(
     result.score_estimator_type = score_est_type
     result.n_particles = n_particles
     result.reconstruction_method = recon_method
-    result.bandwidth_factor = bandwidth_factor
+    result.bandwidth_factor = bw / dx if score_method == "neumann_kde" else bandwidth_factor
     result.bandwidth_used = bw if recon_method == "kde" else float("nan")
     result.epsilon_used = epsilon  # base epsilon before scale_by_peak
 
@@ -1171,6 +1212,46 @@ def run_density_particle_estimated_score_deterministic(
                                   np.clip(s_grid, -score_clipping, score_clipping),
                                   s_grid)
             scores = np.interp(positions, x_grid, s_grid)
+
+        elif score_method == "neumann_kde":
+            # Canonical single-kernel path: the reconstruction and score use
+            # the same Neumann heat kernel and its analytic derivative.
+            w_uniform = np.full(n_particles, total_mass / n_particles, dtype=float)
+            _, _, scores, _ = neumann_kde_score(
+                positions,
+                positions,
+                w_uniform,
+                x_min,
+                x_max,
+                bw,
+                epsilon=epsilon_actual,
+            )
+            rho_grid, _, s_grid, _ = neumann_kde_score(
+                x_grid,
+                positions,
+                w_uniform,
+                x_min,
+                x_max,
+                bw,
+                epsilon=epsilon_actual,
+            )
+            # Equal to the reconstruction above up to roundoff.  Assign it so
+            # all score diagnostics use the exact density paired with s_grid.
+            u_recon = rho_grid
+            if score_clipping is not None and score_clipping > 0.0:
+                finite_mask_clip = np.isfinite(scores)
+                clip_mask = finite_mask_clip & (np.abs(scores) > score_clipping)
+                n_clipped = int(np.sum(clip_mask))
+                scores = np.where(
+                    finite_mask_clip,
+                    np.clip(scores, -score_clipping, score_clipping),
+                    scores,
+                )
+                s_grid = np.where(
+                    np.isfinite(s_grid),
+                    np.clip(s_grid, -score_clipping, score_clipping),
+                    s_grid,
+                )
 
         elif score_method == "smoothed_log":
             # Gaussian-smoothed log-density gradient
