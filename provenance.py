@@ -105,6 +105,11 @@ def study_dir(
         hashes = entry.get("sha256", {})
         if not isinstance(hashes, dict):
             raise ManifestError(f"Study {key!r} has invalid sha256 mapping")
+        unhashed = sorted(set(required) - set(hashes))
+        if unhashed:
+            raise ManifestError(
+                f"Study {key!r} has required files without hashes: {', '.join(unhashed)}"
+            )
         for name, expected in hashes.items():
             candidate = resolved / name
             if not candidate.is_file():
@@ -173,4 +178,3 @@ def write_manifest(
     }
     output_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return output_path
-
