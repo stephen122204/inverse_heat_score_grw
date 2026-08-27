@@ -20,8 +20,8 @@ themselves use (so the same case is reproduced).
 
 Usage
 -----
-    python make_figures.py                 # use latest outputs/ dirs
-    python make_figures.py --outputs DIR   # repo root containing outputs/
+    python make_figures.py
+    python make_figures.py --manifest manifests/paper_v5_1.json
 
 Required experiment outputs (run these first):
     scripts/run_representation_audit.py          -> representation_audit_*
@@ -34,9 +34,7 @@ Required experiment outputs (run these first):
 from __future__ import annotations
 
 import argparse
-import glob
 import importlib.util
-import os
 import sys
 from pathlib import Path
 
@@ -56,6 +54,7 @@ from invheat_grw.methods import (
     run_density_particle_oracle_score_deterministic,
     run_density_particle_estimated_score_deterministic,
 )
+from provenance import DEFAULT_MANIFEST, load_manifest, study_dir
 
 OUT = REPO / "figures"
 OUT.mkdir(exist_ok=True)
@@ -83,13 +82,14 @@ TEST_LS = figstyle.TEST_LS
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-def latest_dir(pattern: str) -> Path | None:
-    # Search both top-level outputs/ and any nested bundle (e.g. paper_run_*/).
-    # Pick the most recent by the timestamp encoded in the directory name.
-    hits = set(glob.glob(str(REPO / "outputs" / pattern))
-               + glob.glob(str(REPO / "outputs" / "**" / pattern), recursive=True))
-    dirs = [Path(h) for h in hits if Path(h).is_dir()]
-    return max(dirs, key=lambda p: p.name) if dirs else None
+_MANIFEST = None
+
+
+def selected_study(key: str) -> Path:
+    global _MANIFEST
+    if _MANIFEST is None:
+        _, _MANIFEST = load_manifest(DEFAULT_MANIFEST)
+    return study_dir(_MANIFEST, key, REPO)
 
 
 def read_csv(d: Path | None, name: str) -> pd.DataFrame | None:
@@ -153,7 +153,7 @@ def fig_naive():
 #              Refining neither grid nor N moves the gradient-glob error.
 # ---------------------------------------------------------------------------
 def fig_convergence():
-    d = latest_dir("representation_audit_*")
+    d = selected_study("representation_audit")
     df = read_csv(d, "representation_audit_metrics.csv")
     if df is None:
         print("  [skip] representation_audit metrics not found"); return
@@ -240,7 +240,7 @@ def fig_density_loop():
 # Figure: bandwidth sweep U-curves (REAL data, B/H/Z, production smoothed_log)
 # ---------------------------------------------------------------------------
 def fig_bandwidth_sweep():
-    d = latest_dir("score_estimation_audit_*")
+    d = selected_study("score_estimation_audit")
     df = read_csv(d, "score_estimation_audit_metrics.csv")
     if df is None:
         print("  [skip] score_estimation_audit metrics not found"); return
@@ -271,7 +271,7 @@ def fig_bandwidth_sweep():
 # Figure: particle-count refinement (REAL data from validation N-convergence)
 # ---------------------------------------------------------------------------
 def fig_particle_count():
-    d = latest_dir("validation_stage_*")
+    d = selected_study("validation_stage")
     df = read_csv(d, "validation_metrics.csv")
     if df is None:
         print("  [skip] validation metrics not found"); return
@@ -329,7 +329,7 @@ def fig_variable_field():
 
 
 def fig_variable_results():
-    d = latest_dir("variable_coefficient_audit_*")
+    d = selected_study("variable_coefficient_audit")
     df = read_csv(d, "variable_coeff_metrics.csv")
     if df is None:
         print("  [skip] variable_coeff metrics not found"); return
@@ -357,7 +357,7 @@ def fig_variable_results():
 
 
 def fig_vh_mixture():
-    d = latest_dir("vh_mixture_bandwidth_refinement_*")
+    d = selected_study("vh_mixture_bandwidth")
     df = read_csv(d, "vh_mixture_bandwidth_metrics.csv")
     if df is None:
         print("  [skip] vh_mixture metrics not found"); return
@@ -376,10 +376,15 @@ def fig_vh_mixture():
 
 
 def main():
+    global _MANIFEST
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", nargs="*", default=None,
                     help="subset of figure keys to build")
+    ap.add_argument("--manifest", default=str(DEFAULT_MANIFEST),
+                    help="explicit run manifest; defaults to the archived paper-v5.1 manifest")
     args = ap.parse_args()
+    manifest_path, _MANIFEST = load_manifest(args.manifest)
+    print(f"[provenance] {manifest_path}")
     figs = {
         "naive": fig_naive,
         "convergence": fig_convergence,

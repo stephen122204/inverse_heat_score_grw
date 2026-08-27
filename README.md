@@ -25,12 +25,14 @@ Three commands cover everything:
 ```bash
 python reproduce.py verify           # check every reported number against the archived outputs
 python reproduce.py                  # rerun every experiment, then rebuild all twelve figures
-python reproduce.py --figures-only   # rebuild the figures from existing CSVs
+python reproduce.py --figures-only   # rebuild from manifests/paper_v5_1.json
 ```
 
 `verify` runs in seconds and needs no simulation. The full run executes the
-studies below in order, then regenerates the twelve shipped figures from the
-resulting CSVs. No figure hardcodes any result.
+studies below in order, writes a manifest containing the exact output paths and
+file hashes, then regenerates the twelve shipped figures from that manifest.
+No figure hardcodes a result or selects the lexicographically latest output.
+To use a different archived run, pass `--manifest PATH` to `reproduce.py`.
 
 | Study | Wall clock |
 |---|---|
@@ -65,6 +67,8 @@ reproduce.py                 one-shot pipeline (studies + figures)
 make_figures.py              core figures from archived CSVs
 make_new_figures.py          noise-band, representation-failure, nonsmooth figures
 make_discrepancy_figure.py   discrepancy figure
+provenance.py                run-manifest validation and creation
+manifests/                   pinned study paths used by archived paper versions
 figures/                     the twelve shipped figures
 outputs/                     archived study outputs behind the tables and figures
 ```

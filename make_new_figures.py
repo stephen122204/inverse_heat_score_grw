@@ -4,14 +4,14 @@ make_new_figures.py — representation-failure, noise-band, and nonsmooth figure
 Manuscript labels (draft): `fig:representation_failure`, `fig:noise`,
 `fig:nonsmooth`.
 
-All data come from real runs:
+All data come from real runs selected by an explicit manifest:
   fig_representation_failure_visual : Test B exact-score density-particle
         (N=5000, bw4, E2~0.0069) vs gradient-glob (E2~0.175), reproduced inline
         — the SAME runs behind Table 1.
-  fig_noise_robustness_bands        : reads the latest noise_study_25seeds_*
+  fig_noise_robustness_bands        : reads the manifest-selected noise study
         arrays; mean line + shaded +/-1 std band for smoothed-log bw4, bw6, and
         optimally tuned Tikhonov.
-  fig_nonsmooth_reconstruction      : reads the latest nonsmooth_case_* arrays;
+  fig_nonsmooth_reconstruction      : reads the manifest-selected nonsmooth arrays;
         tent true u0, best smoothed-log reconstruction, Tikhonov.
 
 Nothing here hardcodes a numeric result; legends print E2 read from the data.
@@ -19,7 +19,7 @@ Nothing here hardcodes a numeric result; legends print E2 read from the data.
 
 from __future__ import annotations
 
-import glob
+import argparse
 import sys
 import warnings
 from pathlib import Path
@@ -40,6 +40,7 @@ from invheat_grw.methods import (
     run_oracle_score_deterministic,
     run_density_particle_oracle_score_deterministic,
 )
+from provenance import DEFAULT_MANIFEST, load_manifest, study_dir
 
 OUT = REPO / "figures"
 OUT.mkdir(exist_ok=True)
@@ -66,10 +67,14 @@ def save(fig, stem):
     print(f"  wrote figures/{stem}.pdf")
 
 
-def latest(pattern):
-    hits = glob.glob(str(REPO / "outputs" / pattern))
-    dirs = [Path(h) for h in hits if Path(h).is_dir()]
-    return max(dirs, key=lambda p: p.name) if dirs else None
+_MANIFEST = None
+
+
+def selected_study(key: str) -> Path:
+    global _MANIFEST
+    if _MANIFEST is None:
+        _, _MANIFEST = load_manifest(DEFAULT_MANIFEST)
+    return study_dir(_MANIFEST, key, REPO)
 
 
 # ---------------------------------------------------------------------------
@@ -121,9 +126,7 @@ def fig_representation_failure_visual():
 # Noise study with error bands (mean +/- 1 std)
 # ---------------------------------------------------------------------------
 def fig_noise_robustness_bands():
-    d = latest("noise_study_25seeds_*")
-    if d is None:
-        print("  [skip] no noise_study_25seeds_* dir"); return
+    d = selected_study("noise_study")
     agg = pd.read_csv(d / "noise_study_summary.csv")
     series = [
         ("smoothed_log_bw4", r"smoothed-log, $h/\Delta x = 4$", figstyle.METHOD, "o", "-"),
@@ -152,9 +155,7 @@ def fig_noise_robustness_bands():
 # Non-smooth (tent) reconstruction vs truth
 # ---------------------------------------------------------------------------
 def fig_nonsmooth_reconstruction():
-    d = latest("nonsmooth_case_*")
-    if d is None:
-        print("  [skip] no nonsmooth_case_* dir"); return
+    d = selected_study("nonsmooth_case")
     arr = np.load(d / "nonsmooth_arrays.npz")
     met = pd.read_csv(d / "nonsmooth_metrics.csv")
     case = "tent"
@@ -188,6 +189,13 @@ def fig_nonsmooth_reconstruction():
 
 
 def main():
+    global _MANIFEST
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--manifest", default=str(DEFAULT_MANIFEST),
+                    help="explicit run manifest; defaults to the archived paper-v5.1 manifest")
+    args = ap.parse_args()
+    manifest_path, _MANIFEST = load_manifest(args.manifest)
+    print(f"[provenance] {manifest_path}")
     print("[fig] representation_failure_visual")
     fig_representation_failure_visual()
     print("[fig] noise_robustness_bands")

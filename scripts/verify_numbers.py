@@ -7,25 +7,50 @@ paper's universal accuracy claim and reports HOLDS or VIOLATED. Exits nonzero
 on any MISMATCH or VIOLATED.
 
 Usage:
-    python reproduce.py verify        (or: python scripts/verify_numbers.py)
+    python reproduce.py verify
+    python scripts/verify_numbers.py --manifest manifests/paper_v5_1.json
 """
 from __future__ import annotations
+import argparse
+import copy
 import sys
 from pathlib import Path
 import numpy as np
 import pandas as pd
 
 REPO = Path(__file__).resolve().parent.parent
-PR = REPO / "outputs" / "paper_run_20260627"
+sys.path.insert(0, str(REPO))
+sys.path.insert(0, str(REPO / "src"))
 
-rep = pd.read_csv(PR / "representation_audit_20260627_094153/representation_audit_metrics.csv")
-sca = pd.read_csv(PR / "score_estimation_audit_20260627_084924/score_estimation_audit_metrics.csv")
-val = pd.read_csv(PR / "validation_stage_20260627_082621/validation_metrics.csv")
-noi = pd.read_csv(REPO / "outputs/noise_study_25seeds_20260629_153744/noise_study_summary.csv")
-dis = pd.read_csv(REPO / "outputs/discrepancy_principle_final_20260629_165900/discrepancy_summary.csv")
-non = pd.read_csv(REPO / "outputs/nonsmooth_case_20260629_152746/nonsmooth_metrics.csv")
-var = pd.read_csv(PR / "variable_coefficient_audit_20260627_082333/variable_coeff_metrics.csv")
-vh  = pd.read_csv(PR / "vh_mixture_bandwidth_refinement_20260627_084940/vh_mixture_bandwidth_metrics.csv")
+from provenance import DEFAULT_MANIFEST, load_manifest, validate_manifest
+from invheat_grw.config import load_config
+from invheat_grw.fields import make_grid, observed_final
+
+ap = argparse.ArgumentParser()
+ap.add_argument("--manifest", default=str(DEFAULT_MANIFEST),
+                help="explicit archived-output manifest")
+ap.add_argument("--verify-hashes", action="store_true",
+                help="also verify every hash recorded by the manifest")
+args = ap.parse_args()
+manifest_path, manifest = load_manifest(args.manifest)
+sources = validate_manifest(
+    manifest,
+    ["representation_audit", "score_estimation_audit", "validation_stage",
+     "noise_study", "discrepancy_final", "nonsmooth_case",
+     "variable_coefficient_audit", "vh_mixture_bandwidth"],
+    REPO,
+    verify_hashes=args.verify_hashes,
+)
+print(f"[provenance] {manifest_path}")
+
+rep = pd.read_csv(sources["representation_audit"] / "representation_audit_metrics.csv")
+sca = pd.read_csv(sources["score_estimation_audit"] / "score_estimation_audit_metrics.csv")
+val = pd.read_csv(sources["validation_stage"] / "validation_metrics.csv")
+noi = pd.read_csv(sources["noise_study"] / "noise_study_summary.csv")
+dis = pd.read_csv(sources["discrepancy_final"] / "discrepancy_summary.csv")
+non = pd.read_csv(sources["nonsmooth_case"] / "nonsmooth_metrics.csv")
+var = pd.read_csv(sources["variable_coefficient_audit"] / "variable_coeff_metrics.csv")
+vh = pd.read_csv(sources["vh_mixture_bandwidth"] / "vh_mixture_bandwidth_metrics.csv")
 
 rows = []  # (printed, location, stored, source, verdict)
 def chk(printed, loc, stored, src, nd=None, kind="round"):
@@ -78,6 +103,24 @@ chk("4.1","tab:bandwidth H ratio", sw("H","fd_grid_ratio",4.0)/orc("H"), "comput
 chk("0.59","tab:bandwidth Z ratio", sw("Z","smoothed_log",2.0)/orc("Z"), "computed")
 chk("1.11","sec5.2 B bw1", sw("B","smoothed_log",1.0), "score audit CSV")
 chk("0.134","sec5.2 B bw16", sw("B","smoothed_log",16.0), "score audit CSV")
+
+# The constant-case CSV stores an absolute forward residual, whereas the paper
+# reports the relative value.  Reconstruct the documented denominator here so
+# the two headline endpoints are explicit verifier checks rather than hidden
+# hand conversions.  The schema itself is repaired in the new method branch.
+cfg_z = copy.deepcopy(load_config(str(REPO / "configs" / "gaussian_base.yaml")))
+cfg_z.heat.T = 0.05
+cfg_z.initial_condition.sigma0 = 0.05
+cfg_z.initial_condition.mu = 0.4
+cfg_z.domain.n_grid = 400
+x_z = make_grid(cfg_z)
+g_z = observed_final(x_z, cfg_z)
+dx_z = float(x_z[1] - x_z[0])
+g_z_norm = float(np.sqrt(dx_z * np.sum(g_z ** 2)))
+z_fc_abs = g(sca, test="Z", score_method="smoothed_log",
+             bandwidth_factor=4.0, epsilon=1e-8).forward_consistency_l2.iloc[0]
+chk("0.021", "sec5.3 E_fwd range high", z_fc_abs / g_z_norm,
+    "score audit CSV / computed relative residual")
 # sec 4.2 cross-check
 for t, a, b in [("B","0.0257","0.0231"),("H","0.0650","0.0657"),("Z","0.0229","0.0230")]:
     chk(a, f"sec4.2 direct-kde {t}", sw(t,"direct_kde",4.0), "score audit CSV")
@@ -158,6 +201,8 @@ chk("0.147","sec6.2 fd beta.9 gaussian", vv("VB_beta09",3), "variable CSV")
 chk("0.251","sec6.2 fd beta.9 mixture", vv("VH_beta09",3), "variable CSV")
 chk("0.015","sec6.2 sl beta.9 gaussian", vv("VB_beta09",1), "variable CSV")
 chk("0.088","sec6.2 sl beta.9 mixture", vv("VH_beta09",1), "variable CSV")
+vf_low = g(var, case="VB_beta09", method="variable_estimated_smoothed_log_bw4").forward_consistency_l2.iloc[0]
+chk("0.008", "sec5.3 E_fwd range low", vf_low, "variable CSV")
 
 # ---- VH sweep sec6.3 ----
 sl_vh = g(vh, method="smoothed_log").sort_values("bandwidth_factor").relative_l2.tolist()
