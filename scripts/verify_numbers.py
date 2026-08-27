@@ -12,7 +12,6 @@ Usage:
 """
 from __future__ import annotations
 import argparse
-import copy
 import sys
 from pathlib import Path
 import numpy as np
@@ -23,8 +22,6 @@ sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "src"))
 
 from provenance import DEFAULT_MANIFEST, load_manifest, validate_manifest
-from invheat_grw.config import load_config
-from invheat_grw.fields import make_grid, observed_final
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--manifest", default=str(DEFAULT_MANIFEST),
@@ -105,23 +102,16 @@ chk("1.11","sec5.2 B bw1", sw("B","smoothed_log",1.0), "score audit CSV")
 chk("0.134","sec5.2 B bw16", sw("B","smoothed_log",16.0), "score audit CSV")
 
 # The constant-case CSV stores an absolute forward residual, whereas the paper
-# reports the relative value.  Reconstruct the documented denominator here so
-# the two headline endpoints are explicit verifier checks rather than hidden
-# hand conversions. New runs store the relative quantity directly; this
-# conversion remains only because the v5.1 archive predates that schema fix.
-cfg_z = copy.deepcopy(load_config(str(REPO / "configs" / "gaussian_base.yaml")))
-cfg_z.heat.T = 0.05
-cfg_z.initial_condition.sigma0 = 0.05
-cfg_z.initial_condition.mu = 0.4
-cfg_z.domain.n_grid = 400
-x_z = make_grid(cfg_z)
-g_z = observed_final(x_z, cfg_z)
-dx_z = float(x_z[1] - x_z[0])
-g_z_norm = float(np.sqrt(dx_z * np.sum(g_z ** 2)))
+# reports the relative value.  The archived endpoint-grid denominator ||g_Z||
+# is pinned in the manifest as an archival constant, so this check has no
+# dependence on the current grid or field code.  New runs store the relative
+# quantity directly; the conversion remains only because the v5.1 archive
+# predates that schema fix.
+g_z_norm = float(manifest["archived_constants"]["z_observed_norm_endpoint"])
 z_fc_abs = g(sca, test="Z", score_method="smoothed_log",
              bandwidth_factor=4.0, epsilon=1e-8).forward_consistency_l2.iloc[0]
 chk("0.021", "sec5.3 E_fwd range high", z_fc_abs / g_z_norm,
-    "score audit CSV / computed relative residual")
+    "score audit CSV / archived denominator")
 # sec 4.2 cross-check
 for t, a, b in [("B","0.0257","0.0231"),("H","0.0650","0.0657"),("Z","0.0229","0.0230")]:
     chk(a, f"sec4.2 direct-kde {t}", sw(t,"direct_kde",4.0), "score audit CSV")

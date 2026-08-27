@@ -24,6 +24,11 @@ from __future__ import annotations
 import numpy as np
 from .config import Config
 
+# The spatial discretization convention make_grid implements.  Frozen figure
+# datasets and run manifests record this string; the live figure-freeze gate
+# compares it against the archive it is asked to verify.
+GRID_CONVENTION = "endpoint"
+
 
 def make_grid(cfg: Config) -> np.ndarray:
     """Return uniform grid with n_grid points on [x_min, x_max]."""

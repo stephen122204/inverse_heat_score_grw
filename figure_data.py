@@ -31,7 +31,7 @@ REPO = Path(__file__).resolve().parent
 sys.path.insert(0, str(REPO / "src"))
 
 from invheat_grw.config import load_config, Config
-from invheat_grw.fields import make_grid, true_u0, observed_final
+from invheat_grw.fields import GRID_CONVENTION, make_grid, true_u0, observed_final
 from invheat_grw.methods import (
     run_naive_backward,
     run_oracle_score_deterministic,
@@ -204,6 +204,7 @@ def save_dataset(data: dict[str, dict[str, np.ndarray]], out_dir: Path,
     meta = {
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "command": command,
+        "grid_convention": GRID_CONVENTION,
         "code_commit": git_commit(REPO),
         "environment": {
             "python": sys.version.split()[0],
