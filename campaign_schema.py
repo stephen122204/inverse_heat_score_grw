@@ -65,6 +65,7 @@ CLOSURE_REF_RESOLUTIONS = (DECRIME_FINE, DECRIME_FINER)
 CLOSURE_REF_GATE = 1e-4
 CLOSURE_LAST_REDUCTION = 1.5
 SPLIT_INVARIANCE_TOL = 1e-13
+DECOMP_RECONCILE_TOL = 1e-10
 CLOSURES = ("frozen_left", "mass")
 REFERENCE_KINDS = ("regularized", "unregularized")
 
@@ -112,6 +113,51 @@ def frozen_closure_offset(a: float, alpha: float, T: float) -> float:
     """Signed frozen-left closure error for u0 = c + a cos(pi x):
     U_frozen - u0 = -a (1 - exp(-alpha pi^2 T))  (protocol Section 8)."""
     return -a * (1.0 - math.exp(-alpha * math.pi ** 2 * T))
+
+
+# ---------------------------------------------------------------------------
+# Document binding: needles generated from the schema constants, so changing
+# a constant here without amending the protocol document (or vice versa)
+# fails the binding test.
+# ---------------------------------------------------------------------------
+
+def _pow10(v: float) -> str:
+    e = round(math.log10(v))
+    if abs(v - 10.0 ** e) > 1e-12 * v:
+        raise ValueError(f"{v!r} is not a power of ten")
+    return f"1e{e}"
+
+
+def _step(dt: float) -> str:
+    return re.sub(r"e([+-])0(\d)", r"e\g<1>\g<2>", f"{dt:.0e}")
+
+
+def document_binding_needles() -> tuple[str, ...]:
+    return (
+        ", ".join(f"{h:.3f}" for h in BANDWIDTHS),
+        ", ".join(str(n) for n in ADEQUACY_N),
+        ", ".join(_pow10(e) for e in EPS_REL_GRID),
+        f"{LAMBDA_SCAN_POINTS}-point",
+        f"N = {DEFAULT_N}",
+        f"**{ADEQUACY_CASES[0]}**, the exact bounded-domain primary, "
+        f"and **{ADEQUACY_CASES[1]}**",
+        f"|E_4000-E_10000|/E_10000 <= {ADEQUACY_REL_GATE:g}",
+        f"at most `{_pow10(ADEQUACY_MASS_GATE)}` relative to `M0`",
+        ", ".join(f"({m}, {_step(dt)})" for m, dt in CLOSURE_REFINEMENTS),
+        "{" + ", ".join(f"{h:.3f}" for h in CLOSURE_H_BRIDGE) + "}",
+        f"`tau = {TAU_HEADLINE:.1f}`",
+        f"`tau = {TAU_SENSITIVITY:.1f}`",
+        "three preregistered noisy-lambda selections",
+        f"at most `{_pow10(DECRIME_GATE)}`",
+        f"at most `{_pow10(CLOSURE_REF_GATE)}`",
+        f"at least `{CLOSURE_LAST_REDUCTION:g}`",
+        f"`{_pow10(SPLIT_INVARIANCE_TOL)}` relative",
+        f"`epsilon_abs >= {EPS_FLOOR_FACTOR:g} B0`",
+        f"reconcile to `{_pow10(DECOMP_RECONCILE_TOL)}` relative",
+        "Rusanov",
+        "SSPRK3",
+        "monotonized-central",
+    ) + tuple(f"**Arm {arm}" for arm in ARMS)
 
 
 # ---------------------------------------------------------------------------
@@ -235,6 +281,21 @@ class ProtocolNotFrozen(RuntimeError):
 
 CHECKLIST_HEADER = "## Freeze checklist"
 
+EXPECTED_CHECKLIST = (
+    "Primary/secondary case roles and analytic formulas independently checked.",
+    "Fixed discretization and `N = 4000` adequacy gate accepted.",
+    "Physical bandwidth grid, endpoint censoring, and noiseless rule accepted.",
+    "Score-floor diagnostics and fixed headline epsilon accepted.",
+    "Input-only positivity arms and residual normalization accepted.",
+    "Continuous-lambda scan/refinement and boundary rules accepted.",
+    "Paired noise seeds, selection labels, and paired summaries accepted.",
+    "De-crimed variable-data projection and convergence gate accepted.",
+    "Closure definitions, wrong-limit reference, and exact field decomposition accepted.",
+    "Canonical estimator/self-interaction and transition-table scope accepted.",
+    "Row accounting, acceptance gates, provenance, and amendment rules accepted.",
+    "Status changed from PROPOSED to FROZEN in a dedicated commit.",
+)
+
 
 def status_of(text: str) -> str:
     match = re.search(r"\*\*Status:\s*([A-Z]+)", text)
@@ -243,13 +304,48 @@ def status_of(text: str) -> str:
     return match.group(1)
 
 
-def unchecked_checklist_items(text: str) -> list[str]:
-    """Unchecked '- [ ]' items in the freeze checklist section."""
+def checklist_items(text: str) -> list[tuple[bool, str]]:
+    """(checked, label) for every checklist row, in document order."""
     parts = text.split(CHECKLIST_HEADER, 1)
     if len(parts) < 2:
         raise RuntimeError("no freeze checklist section found")
-    return [line.strip() for line in parts[1].splitlines()
-            if line.strip().startswith("- [ ]")]
+    items = []
+    for line in parts[1].splitlines():
+        match = re.match(r"- \[( |x)\] (.+)$", line.strip())
+        if match:
+            items.append((match.group(1) == "x", match.group(2).strip()))
+    return items
+
+
+def unchecked_checklist_items(text: str) -> list[str]:
+    return [label for checked, label in checklist_items(text) if not checked]
+
+
+def validate_freeze(text: str) -> None:
+    """Raise ProtocolNotFrozen unless the document authorizes execution:
+    FROZEN status, exactly the expected checklist labels in order, and every
+    box checked.  A deleted, reworded, or malformed row is a refusal, not a
+    bypass."""
+    problems = []
+    status = status_of(text)
+    if status != "FROZEN":
+        problems.append(f"status is {status}")
+    items = checklist_items(text)
+    labels = tuple(label for _, label in items)
+    if labels != EXPECTED_CHECKLIST:
+        problems.append(
+            f"freeze checklist does not match the {len(EXPECTED_CHECKLIST)} "
+            f"expected items (found {len(labels)})"
+        )
+    unchecked = [label for checked, label in items if not checked]
+    if unchecked:
+        problems.append(f"{len(unchecked)} freeze-checklist boxes are unchecked")
+    if problems:
+        raise ProtocolNotFrozen(
+            "PHASE2C_PROTOCOL.md: " + "; ".join(problems) + ".  Campaign "
+            "execution is authorized only when the status line reads FROZEN "
+            "in its own commit and every expected checklist box is checked."
+        )
 
 
 def protocol_status() -> str:
@@ -257,19 +353,4 @@ def protocol_status() -> str:
 
 
 def assert_frozen() -> None:
-    """The freeze gate: FROZEN status AND every checklist box checked.
-
-    A status edit alone does not authorize execution; each open box names a
-    review that has not happened."""
-    text = PROTOCOL_FILE.read_text(encoding="utf-8")
-    status = status_of(text)
-    unchecked = unchecked_checklist_items(text)
-    if status != "FROZEN" or unchecked:
-        detail = f"status is {status}"
-        if unchecked:
-            detail += f"; {len(unchecked)} freeze-checklist boxes are unchecked"
-        raise ProtocolNotFrozen(
-            f"PHASE2C_PROTOCOL.md: {detail}.  Campaign execution is "
-            "authorized only when the status line reads FROZEN in its own "
-            "commit and every checklist box is checked."
-        )
+    validate_freeze(PROTOCOL_FILE.read_text(encoding="utf-8"))
