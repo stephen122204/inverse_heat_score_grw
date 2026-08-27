@@ -66,6 +66,15 @@ def field_to_globs(u: np.ndarray, x: np.ndarray, cfg: Config) -> GlobState:
     Returns
     -------
     GlobState with positions and weights.
+
+    The reflection walls x_min/x_max are the physical domain bounds from the
+    configuration, never the first and last sample coordinates: on a
+    cell-centered grid the samples sit half a cell inside the domain, and
+    sample-derived walls would silently shrink the transport interval.
+    u_left = u[0] is the discrete reconstruction anchor of the cumulative-sum
+    representation — the field value at the first sample, not a physical
+    boundary value; its continuum treatment (the closure of the reconstructed
+    field) is fixed by the closure analysis, not here.
     """
     n_per = cfg.grw.gradient_globs_per_jump
     n_grid = len(x)
@@ -85,8 +94,8 @@ def field_to_globs(u: np.ndarray, x: np.ndarray, cfg: Config) -> GlobState:
         positions=np.array(all_pos, dtype=float),
         weights=np.array(all_wts, dtype=float),
         u_left=float(u[0]),
-        x_min=float(x[0]),
-        x_max=float(x[-1]),
+        x_min=float(cfg.domain.x_min),
+        x_max=float(cfg.domain.x_max),
     )
 
 

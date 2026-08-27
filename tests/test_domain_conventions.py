@@ -48,7 +48,14 @@ SCANNED_FILES = [
     "src/invheat_grw/scores.py",
 ]
 
-FORBIDDEN = re.compile(r"x(?:_grid)?\s*\[\s*-1\s*\]\s*-\s*x(?:_grid)?\s*\[\s*0\s*\]")
+FORBIDDEN = [
+    # Domain length inferred from the sample span.
+    re.compile(r"x(?:_grid)?\s*\[\s*-1\s*\]\s*-\s*x(?:_grid)?\s*\[\s*0\s*\]"),
+    # Physical walls assigned from the first/last sample coordinate.
+    re.compile(r"x_min\s*=\s*(?:float\(\s*)?x(?:_grid)?\s*\[\s*0\s*\]"),
+    re.compile(r"x_max\s*=\s*(?:float\(\s*)?x(?:_grid)?\s*\[\s*-1\s*\]"),
+    re.compile(r"x_min\s*,\s*x_max\s*=\s*(?:float\(\s*)?x(?:_grid)?\s*\[\s*0\s*\]"),
+]
 
 
 class DomainConventionTests(unittest.TestCase):
@@ -56,16 +63,37 @@ class DomainConventionTests(unittest.TestCase):
         missing = [f for f in SCANNED_FILES if not (REPO / f).is_file()]
         self.assertEqual(missing, [])
 
-    def test_no_domain_length_inferred_from_sample_span(self):
+    def test_no_domain_convention_inferred_from_samples(self):
         offenders = []
         for rel in SCANNED_FILES:
             text = (REPO / rel).read_text(encoding="utf-8")
             for i, line in enumerate(text.splitlines(), start=1):
-                if FORBIDDEN.search(line):
+                if any(pattern.search(line) for pattern in FORBIDDEN):
                     offenders.append(f"{rel}:{i}: {line.strip()}")
         self.assertEqual(offenders, [],
-                         "domain length inferred from sample coordinates:\n"
+                         "domain convention inferred from sample coordinates:\n"
                          + "\n".join(offenders))
+
+
+class GlobWallTests(unittest.TestCase):
+    def test_glob_state_keeps_physical_walls_on_cell_centered_samples(self):
+        import copy
+        import sys as _sys
+        _sys.path.insert(0, str(REPO / "src"))
+        import numpy as np
+        from invheat_grw.cell_grid import cell_centers
+        from invheat_grw.config import load_config
+        from invheat_grw.globs import field_to_globs
+
+        cfg = copy.deepcopy(load_config(str(REPO / "configs" / "gaussian_base.yaml")))
+        x = cell_centers(cfg.domain.x_min, cfg.domain.x_max, 32)
+        u = 1.0 + 0.5 * np.cos(np.pi * (x - cfg.domain.x_min))
+        state = field_to_globs(u, x, cfg)
+        self.assertEqual(state.x_min, cfg.domain.x_min)
+        self.assertEqual(state.x_max, cfg.domain.x_max)
+        # The samples themselves sit strictly inside the walls.
+        self.assertGreater(float(x[0]), state.x_min)
+        self.assertLess(float(x[-1]), state.x_max)
 
 
 if __name__ == "__main__":
