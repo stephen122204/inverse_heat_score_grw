@@ -128,6 +128,24 @@ def validate_regularization(reg: RegularizationConfig) -> None:
         warnings.warn("regularization.enabled=True but no specific regularizer is enabled.", stacklevel=3)
 
 
+def exact_step_count(T: float, dt: float, rel_tol: float = 1e-9) -> int:
+    """Step count n with n * dt = T to within rel_tol * max(T, dt).
+
+    Every integration in this project must land exactly on the requested
+    final time.  A horizon that is not an integer multiple of the step is an
+    explicit configuration error, never a silent early or late stop.
+    """
+    if not (T > 0.0 and dt > 0.0):
+        raise ValueError(f"T and dt must be positive, got T={T}, dt={dt}")
+    n = round(T / dt)
+    if n < 1 or abs(n * dt - T) > rel_tol * max(T, dt):
+        raise ValueError(
+            f"time horizon T={T} is not an integer multiple of dt={dt} "
+            f"(nearest n={n} gives n*dt={n * dt!r}); adjust T or dt"
+        )
+    return n
+
+
 @dataclass
 class Config:
     domain: DomainConfig
@@ -140,8 +158,8 @@ class Config:
 
     @property
     def n_steps(self) -> int:
-        """Number of backward integration steps."""
-        return round(self.heat.T / self.heat.dt)
+        """Number of backward integration steps (n * dt = T exactly)."""
+        return exact_step_count(self.heat.T, self.heat.dt)
 
 
 def load_config(path: str | Path) -> Config:
