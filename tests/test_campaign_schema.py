@@ -64,11 +64,12 @@ class RowAccountingTests(unittest.TestCase):
         self.assertEqual(counts["noise_paired"],
                          2 * (7 + 3 * 25 * 2 * 7))
         self.assertEqual(counts["lambda_oracle_clean"], 9)
-        self.assertEqual(counts["lambda_noise"], 2 * 3 * 25 * 2 * 2)
-        per_closure_case = (2 * 3) + 2 + (2 * 2 * 2) + (4 * 2)
+        # oracle diagnostic + residual at tau=1.2 and tau=1.0 per noisy block
+        self.assertEqual(counts["lambda_noise"], 2 * 3 * 25 * 2 * 3)
+        per_closure_case = (2 * 3) + 2 + (2 * 2 * 2) + (2 * 4 * 2)
         self.assertEqual(counts["closure"], 3 * per_closure_case)
         self.assertEqual(counts["transition_table"], 3)
-        self.assertEqual(sum(counts.values()), 2879)
+        self.assertEqual(sum(counts.values()), 3203)
 
     def test_rows_are_well_formed(self):
         for name, fn in schema.STUDIES.items():
@@ -80,6 +81,18 @@ class RowAccountingTests(unittest.TestCase):
                     self.assertIn(row["seed"], schema.SEEDS)
                 if "arm" in row and row["arm"] != "shared":
                     self.assertIn(row["arm"], schema.ARMS)
+
+    def test_every_closure_bridge_row_names_a_closure(self):
+        for row in schema.rows_closure():
+            if row["block"] == "h_bridge":
+                self.assertIn(row["closure"], schema.CLOSURES)
+
+    def test_noisy_lambda_rows_cover_all_three_selections(self):
+        rows = schema.rows_lambda_noise()
+        keys = {(r["selection"], r["tau"]) for r in rows}
+        self.assertEqual(keys, {("oracle_continuous", None),
+                                ("residual", schema.TAU_HEADLINE),
+                                ("residual", schema.TAU_SENSITIVITY)})
 
 
 class ProtocolBindingTests(unittest.TestCase):
@@ -96,6 +109,22 @@ class ProtocolBindingTests(unittest.TestCase):
             "**C1**, the exact bounded-domain primary, and **H**",
             "(200, 2e-3), (400, 1e-3), (800, 5e-4)",
             "{0.020, 0.014, 0.010, 0.007}",
+            # gate constants and named methods, so a document-only change
+            # to any of them fails this binding
+            "`tau = 1.2`",
+            "`tau = 1.0`",
+            "three preregistered noisy-lambda selections",
+            "at most `1e-6`",
+            "at most `1e-4`",
+            "at least `1.5`",
+            "`1e-13` relative",
+            "`epsilon_abs >= 100 B0`",
+            "Rusanov",
+            "SSPRK3",
+            "monotonized-central",
+            "reconcile to `1e-10` relative",
+            "**Arm R",
+            "**Arm P",
         ):
             self.assertIn(needle, self.text, needle)
 
@@ -107,6 +136,19 @@ class ProtocolBindingTests(unittest.TestCase):
                 schema.assert_frozen()
         else:
             schema.assert_frozen()
+
+    def test_freeze_gate_rejects_unchecked_boxes_even_when_frozen(self):
+        synthetic = ("**Status: FROZEN**\n\n" + schema.CHECKLIST_HEADER
+                     + "\n\n- [x] reviewed one\n- [ ] still open\n")
+        self.assertEqual(schema.status_of(synthetic), "FROZEN")
+        self.assertEqual(len(schema.unchecked_checklist_items(synthetic)), 1)
+        all_checked = synthetic.replace("- [ ]", "- [x]")
+        self.assertEqual(schema.unchecked_checklist_items(all_checked), [])
+
+    def test_current_document_still_has_open_boxes_while_proposed(self):
+        if schema.protocol_status() == "PROPOSED":
+            self.assertGreater(
+                len(schema.unchecked_checklist_items(self.text)), 0)
 
 
 if __name__ == "__main__":

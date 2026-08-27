@@ -159,10 +159,22 @@ def rows_lambda_oracle_clean() -> list[dict]:
 
 
 def rows_lambda_noise() -> list[dict]:
-    return [{"study": "lambda_noise", "case": c, "eta": eta, "seed": seed,
-             "arm": arm, "selection": sel}
-            for c in NOISE_CASES for eta in NONZERO_ETAS for seed in SEEDS
-            for arm in ARMS for sel in ("oracle_continuous", "residual")]
+    """Three preregistered selections per nonzero-noise block: the oracle
+    continuous diagnostic and the residual selections at both tau values."""
+    rows = []
+    for c in NOISE_CASES:
+        for eta in NONZERO_ETAS:
+            for seed in SEEDS:
+                for arm in ARMS:
+                    rows.append({"study": "lambda_noise", "case": c,
+                                 "eta": eta, "seed": seed, "arm": arm,
+                                 "selection": "oracle_continuous",
+                                 "tau": None})
+                    for tau in (TAU_HEADLINE, TAU_SENSITIVITY):
+                        rows.append({"study": "lambda_noise", "case": c,
+                                     "eta": eta, "seed": seed, "arm": arm,
+                                     "selection": "residual", "tau": tau})
+    return rows
 
 
 def rows_closure() -> list[dict]:
@@ -179,10 +191,14 @@ def rows_closure() -> list[dict]:
                     rows.append({"study": "closure", "block": "reference",
                                  "case": c, "closure": closure, "kind": kind,
                                  "M": m, "dt": dt})
-        for h in CLOSURE_H_BRIDGE:
-            for m, dt in CLOSURE_REF_RESOLUTIONS:
-                rows.append({"study": "closure", "block": "h_bridge",
-                             "case": c, "h": h, "M": m, "dt": dt})
+        # The h-bridge compares the closure-specific regularized and
+        # unregularized references, so it carries the closure dimension.
+        for closure in CLOSURES:
+            for h in CLOSURE_H_BRIDGE:
+                for m, dt in CLOSURE_REF_RESOLUTIONS:
+                    rows.append({"study": "closure", "block": "h_bridge",
+                                 "case": c, "closure": closure, "h": h,
+                                 "M": m, "dt": dt})
     return rows
 
 
@@ -217,19 +233,43 @@ class ProtocolNotFrozen(RuntimeError):
     """Raised when campaign execution is requested before the freeze."""
 
 
-def protocol_status() -> str:
-    text = PROTOCOL_FILE.read_text(encoding="utf-8")
+CHECKLIST_HEADER = "## Freeze checklist"
+
+
+def status_of(text: str) -> str:
     match = re.search(r"\*\*Status:\s*([A-Z]+)", text)
     if not match:
-        raise RuntimeError(f"no status line found in {PROTOCOL_FILE}")
+        raise RuntimeError("no protocol status line found")
     return match.group(1)
 
 
+def unchecked_checklist_items(text: str) -> list[str]:
+    """Unchecked '- [ ]' items in the freeze checklist section."""
+    parts = text.split(CHECKLIST_HEADER, 1)
+    if len(parts) < 2:
+        raise RuntimeError("no freeze checklist section found")
+    return [line.strip() for line in parts[1].splitlines()
+            if line.strip().startswith("- [ ]")]
+
+
+def protocol_status() -> str:
+    return status_of(PROTOCOL_FILE.read_text(encoding="utf-8"))
+
+
 def assert_frozen() -> None:
-    status = protocol_status()
-    if status != "FROZEN":
+    """The freeze gate: FROZEN status AND every checklist box checked.
+
+    A status edit alone does not authorize execution; each open box names a
+    review that has not happened."""
+    text = PROTOCOL_FILE.read_text(encoding="utf-8")
+    status = status_of(text)
+    unchecked = unchecked_checklist_items(text)
+    if status != "FROZEN" or unchecked:
+        detail = f"status is {status}"
+        if unchecked:
+            detail += f"; {len(unchecked)} freeze-checklist boxes are unchecked"
         raise ProtocolNotFrozen(
-            f"PHASE2C_PROTOCOL.md status is {status}; campaign execution is "
-            "authorized only after the status line reads FROZEN in its own "
-            "commit"
+            f"PHASE2C_PROTOCOL.md: {detail}.  Campaign execution is "
+            "authorized only when the status line reads FROZEN in its own "
+            "commit and every checklist box is checked."
         )

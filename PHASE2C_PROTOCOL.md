@@ -57,7 +57,7 @@ The headline scientific conclusions must be supported by C1/C2 or by the de-crim
 - **Epsilon sensitivity at `h = 0.014`:** C1 and Z. C1 is the exact bounded-domain primary; Z is the near-zero-tail stress case.
 - **Paired 25-seed noise campaign:** C1 and B. This supplies one exact bounded-domain primary and a direct bridge to the archived noise study. No other case is silently included in the headline noise aggregate.
 - **Continuous-lambda oracle curves:** every clean case in the bandwidth study.
-- **Residual-selected lambda:** every nonzero-noise row in the paired noise campaign.
+- **Noisy-lambda selections:** for every nonzero-noise `(case, eta, seed, arm)` block, three preregistered noisy-lambda selections: **oracle continuous lambda** as the attainable-performance diagnostic (truth access; never presented as data-driven), **residual-selected at `tau = 1.2`** (headline), and **residual-selected at `tau = 1.0`** (labeled sensitivity).
 - **Gradient-carrier closures:** the G1, G2, and GB cases defined in Section 8.
 - **Legacy transition table:** C1 only.
 
