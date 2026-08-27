@@ -10,43 +10,29 @@ sources for the forbidden length patterns.
 from __future__ import annotations
 
 import re
+import subprocess
 import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 
-SCANNED_FILES = [
-    "figure_data.py",
-    "make_discrepancy_figure.py",
-    "make_figures.py",
-    "make_new_figures.py",
-    "provenance.py",
-    "reproduce.py",
-    "scripts/generate_figure_data.py",
-    "scripts/reselect_discrepancy.py",
-    "scripts/run_all.py",
-    "scripts/run_discrepancy_principle.py",
-    "scripts/run_dt_sweep_glob.py",
-    "scripts/run_noise_study_25seeds.py",
-    "scripts/run_nonsmooth_case.py",
-    "scripts/run_representation_audit.py",
-    "scripts/run_score_estimation_audit.py",
-    "scripts/run_validation_stage.py",
-    "scripts/run_variable_coefficient_audit.py",
-    "scripts/run_vh_mixture_bandwidth_refinement.py",
-    "scripts/verify_figure_freeze.py",
-    "scripts/verify_numbers.py",
-    "src/invheat_grw/baselines.py",
-    "src/invheat_grw/config.py",
-    "src/invheat_grw/fields.py",
-    "src/invheat_grw/globs.py",
-    "src/invheat_grw/io_utils.py",
-    "src/invheat_grw/methods.py",
-    "src/invheat_grw/metrics.py",
-    "src/invheat_grw/neumann_kernels.py",
-    "src/invheat_grw/plotting.py",
-    "src/invheat_grw/scores.py",
-]
+
+def production_files() -> list[str]:
+    """Every tracked Python production file, discovered from git.
+
+    Discovery keeps these bans current automatically: a new production
+    script is scanned the moment it is tracked, with no static inventory to
+    forget.  Test files are exempt (they may legitimately use, e.g.,
+    trapezoidal quadrature as an independent check), and untracked local
+    scripts are ignored.
+    """
+    try:
+        out = subprocess.check_output(["git", "ls-files", "*.py"],
+                                      cwd=REPO, text=True)
+    except (OSError, subprocess.CalledProcessError):
+        return []
+    return sorted(f for f in out.splitlines()
+                  if f and not f.startswith("tests/"))
 
 FORBIDDEN = [
     # Domain length inferred from the sample span.
@@ -59,13 +45,26 @@ FORBIDDEN = [
 
 
 class DomainConventionTests(unittest.TestCase):
-    def test_scanned_files_exist(self):
-        missing = [f for f in SCANNED_FILES if not (REPO / f).is_file()]
-        self.assertEqual(missing, [])
+    @classmethod
+    def setUpClass(cls):
+        cls.files = production_files()
+
+    def _require_discovery(self):
+        if not self.files:
+            self.skipTest("git file discovery unavailable")
+
+    def test_discovery_finds_the_production_tree(self):
+        self._require_discovery()
+        self.assertGreaterEqual(len(self.files), 25)
+        for sentinel in ("figure_data.py",
+                         "scripts/run_variable_coefficient_audit.py",
+                         "src/invheat_grw/methods.py"):
+            self.assertIn(sentinel, self.files)
 
     def test_no_domain_convention_inferred_from_samples(self):
+        self._require_discovery()
         offenders = []
-        for rel in SCANNED_FILES:
+        for rel in self.files:
             text = (REPO / rel).read_text(encoding="utf-8")
             for i, line in enumerate(text.splitlines(), start=1):
                 if any(pattern.search(line) for pattern in FORBIDDEN):
@@ -77,9 +76,10 @@ class DomainConventionTests(unittest.TestCase):
     def test_no_trapezoidal_quadrature_in_production(self):
         """The cell-centered contract integrates by the midpoint rule; any
         trapezoidal call in a production path is an endpoint-era remnant."""
+        self._require_discovery()
         pattern = re.compile(r"trapz|trapezoid", re.IGNORECASE)
         offenders = []
-        for rel in SCANNED_FILES:
+        for rel in self.files:
             text = (REPO / rel).read_text(encoding="utf-8")
             for i, line in enumerate(text.splitlines(), start=1):
                 if pattern.search(line):
