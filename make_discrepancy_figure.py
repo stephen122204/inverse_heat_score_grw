@@ -12,7 +12,7 @@ Reads the manifest-selected discrepancy result and builds a two-panel figure:
      is the diagnostic.
 
 No editorializing title; the caption carries the message. Writes to figures/
-(and syncs to a sibling paper_draft/figures/ when that directory exists).
+(the manuscript's copies are updated only by scripts/sync_paper_figures.py).
 """
 
 from __future__ import annotations
@@ -26,7 +26,6 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 REPO = Path(__file__).resolve().parent
-PAPER_FIGS = REPO.parent / "paper_draft" / "figures"
 
 import figstyle
 figstyle.apply_paper_style()
@@ -81,13 +80,12 @@ def main():
     axB.legend(fontsize=8)
 
     fig.tight_layout()
-    targets = [REPO / "figures"]
-    targets[0].mkdir(exist_ok=True)
-    if PAPER_FIGS.is_dir():
-        targets.append(PAPER_FIGS)
-    for base in targets:
-        fig.savefig(base / "fig_discrepancy_comparison.pdf")
-        fig.savefig(base / "fig_discrepancy_comparison.png", dpi=220)
+    # Write only into the code repository.  Updating the manuscript's copies
+    # is a deliberate release action: run scripts/sync_paper_figures.py.
+    out = REPO / "figures"
+    out.mkdir(exist_ok=True)
+    fig.savefig(out / "fig_discrepancy_comparison.pdf")
+    fig.savefig(out / "fig_discrepancy_comparison.png", dpi=220)
     plt.close(fig)
     print(f"wrote fig_discrepancy_comparison (representative realization {rep_seed}, "
           f"eta={eta}, disc bw {f_disc:.2f} vs min-error bw {f_min:.0f})")
