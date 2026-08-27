@@ -151,8 +151,11 @@ def spectral_cutoff_inverse(
     # Determine which modes to keep
     keep = k_n <= k_cut
 
-    # Invert: multiply by exp(+alpha * k_n^2 * T) for kept modes, zero for cut
-    inv_multiplier = np.where(keep, np.exp(alpha * k_n ** 2 * T), 0.0)
+    # Invert: multiply by exp(+alpha * k_n^2 * T) for kept modes, zero for cut.
+    # Exponentiate only the kept modes; the cut ones would overflow harmlessly
+    # but noisily.
+    inv_multiplier = np.zeros(N)
+    inv_multiplier[keep] = np.exp(alpha * k_n[keep] ** 2 * T)
 
     n_kept = int(np.sum(keep))
     max_inv = float(np.max(inv_multiplier[keep])) if n_kept > 0 else 0.0
