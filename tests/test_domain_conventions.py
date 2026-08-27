@@ -74,6 +74,20 @@ class DomainConventionTests(unittest.TestCase):
                          "domain convention inferred from sample coordinates:\n"
                          + "\n".join(offenders))
 
+    def test_no_trapezoidal_quadrature_in_production(self):
+        """The cell-centered contract integrates by the midpoint rule; any
+        trapezoidal call in a production path is an endpoint-era remnant."""
+        pattern = re.compile(r"trapz|trapezoid", re.IGNORECASE)
+        offenders = []
+        for rel in SCANNED_FILES:
+            text = (REPO / rel).read_text(encoding="utf-8")
+            for i, line in enumerate(text.splitlines(), start=1):
+                if pattern.search(line):
+                    offenders.append(f"{rel}:{i}: {line.strip()}")
+        self.assertEqual(offenders, [],
+                         "trapezoidal quadrature in production paths:\n"
+                         + "\n".join(offenders))
+
 
 class GlobWallTests(unittest.TestCase):
     def test_glob_state_keeps_physical_walls_on_cell_centered_samples(self):

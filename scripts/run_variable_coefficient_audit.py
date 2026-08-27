@@ -82,8 +82,6 @@ from invheat_grw.globs import apply_reflecting_boundary
 from scipy import sparse
 from scipy.sparse.linalg import spsolve
 
-# numpy>=2.0 renamed np.trapz -> np.trapezoid (np.trapz removed in 2.x).
-_trapz = getattr(np, "trapezoid", None) or getattr(np, "trapz")  # type: ignore[attr-defined]
 
 # ---------------------------------------------------------------------------
 # Config paths
@@ -559,12 +557,13 @@ def compute_result_metrics(
     rel_l2 = l2_err / (true_norm + 1e-300)
     linf_err = float(np.max(np.abs(diff)))
 
-    # Mass
-    mass_cand = float(_trapz(cand, x_grid))  # type: ignore[attr-defined]
-    mass_true = float(_trapz(true_u0_field, x_grid))  # type: ignore[attr-defined]
+    # Mass (midpoint rule on the cell-centered grid)
+    mass_cand = float(dx * np.sum(cand))
+    mass_true = float(dx * np.sum(true_u0_field))
 
-    # Total variation
-    tv = float(np.sum(np.abs(np.diff(cand))) * dx)
+    # Total variation: sum of jumps already approximates the integral of
+    # |u_x| (each jump carries one factor of dx), so no dx multiplier.
+    tv = float(np.sum(np.abs(np.diff(cand))))
 
     # Forward consistency (skip for Tikhonov — already computed in sweep)
     if result.get("method_name", "") == "varcoeff_tikhonov_best":
