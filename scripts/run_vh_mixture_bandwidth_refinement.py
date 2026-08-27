@@ -59,7 +59,7 @@ sys.path.insert(0, str(SCRIPT_DIR))   # so we can import the audit module
 
 import run_variable_coefficient_audit as vc  # noqa: E402  (script import)
 
-from invheat_grw.config import load_config
+from invheat_grw.config import load_config, exact_step_count
 from invheat_grw.fields import make_grid, true_u0 as compute_true_u0
 
 # ---------------------------------------------------------------------------
@@ -202,7 +202,7 @@ def run_case(
     beta_tag = "beta05" if abs(beta - 0.5) < 0.01 else "beta09"
     alpha0 = ALPHA0
     dt = DT
-    n_steps = round(T / dt)
+    n_steps = exact_step_count(T, dt)
 
     print(f"\n{'='*60}")
     print(f"[CASE] {case_id}  beta={beta}  IC=mixture  alpha0={alpha0}"

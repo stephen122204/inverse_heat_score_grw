@@ -51,7 +51,7 @@ import pandas as pd
 import copy
 from scipy.fft import dct, idct
 
-from invheat_grw.config import load_config, Config
+from invheat_grw.config import load_config, Config, exact_step_count
 from invheat_grw.fields import make_grid
 from invheat_grw.methods import run_density_particle_estimated_score_deterministic
 from invheat_grw.baselines import tikhonov_inverse
@@ -108,7 +108,7 @@ def dct_propagate(u0, x, t, alpha=ALPHA, *, length: float):
 def run_case(name, u0_fn, T, x, cfg):
     dx = float(x[1] - x[0])
     length = float(cfg.domain.x_max - cfg.domain.x_min)
-    n_steps = round(T / DT)
+    n_steps = exact_step_count(T, DT)
     u0 = u0_fn(x)
     u0_norm = float(np.sqrt(dx * np.sum(u0 ** 2)))
 
