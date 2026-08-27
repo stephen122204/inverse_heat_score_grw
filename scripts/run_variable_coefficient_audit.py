@@ -134,50 +134,32 @@ def build_varcoeff_operator(
     x_grid: np.ndarray, alpha0: float, beta: float
 ) -> sparse.csr_matrix:
     """
-    Build sparse tridiagonal matrix L for ∂_x(a(x) ∂_x u) on x_grid.
+    Conservative cell-centered finite-volume matrix for ∂_x(a(x) ∂_x u).
 
-    Conservative FD at interior point i:
-        [L u]_i = (a_{i+1/2}(u_{i+1}-u_i) - a_{i-1/2}(u_i-u_{i-1})) / dx^2
-
-    Neumann BCs (du/dx=0 at both ends) via ghost-point reflection:
-        At i=0:   only the right interface contributes, left ghost mirrors u[1].
-        At i=N-1: only the left interface contributes, right ghost mirrors u[N-2].
+    Cell j owns [x_j - dx/2, x_j + dx/2]; faces sit midway between adjacent
+    cell centers and carry the flux
+        F_{j+1/2} = a(x_{j+1/2}) (u_{j+1} - u_j) / dx,
+    with a evaluated analytically at the face.  The wall faces carry zero
+    flux (homogeneous Neumann), which is simply the absence of a boundary
+    term.  The resulting matrix is symmetric, has the constants in its
+    nullspace, conserves discrete mass (zero column sums), and is negative
+    semidefinite in the uniformly weighted cell inner product.
     """
     N = len(x_grid)
     dx = x_grid[1] - x_grid[0]
     dx2 = dx * dx
 
-    # Half-point diffusivities: a_{i+1/2} for i = 0..N-2
-    a_vals = a_of_x(x_grid, alpha0, beta)
-    a_half = 0.5 * (a_vals[:-1] + a_vals[1:])   # length N-1
+    x_faces = 0.5 * (x_grid[:-1] + x_grid[1:])       # interior faces, length N-1
+    a_face = a_of_x(x_faces, alpha0, beta)
 
-    # Diagonal, sub-diagonal, super-diagonal arrays
     diag_main = np.zeros(N)
-    diag_upper = np.zeros(N - 1)  # entry (i, i+1)
-    diag_lower = np.zeros(N - 1)  # entry (i, i-1)
-
-    # Interior: i = 1..N-2
-    for i in range(1, N - 1):
-        diag_upper[i] = a_half[i] / dx2
-        diag_lower[i - 1] = a_half[i - 1] / dx2
-        diag_main[i] = -(a_half[i] + a_half[i - 1]) / dx2
-
-    # i = 0: Neumann BC on left — ghost = u[1], so a_{-1/2} term uses u[-1]=u[1]
-    # => [L u]_0 = (a_{1/2}(u_1-u_0) - a_{-1/2}(u_0-u_{-1})) / dx^2
-    #            = (a_{1/2}(u_1-u_0) - a_{-1/2}(u_0-u_1)) / dx^2  [ghost u_{-1}=u_1]
-    #            = (a_{1/2} + a_{-1/2})(u_1-u_0) / dx^2
-    # For simplicity use a_{-1/2} = a_{1/2} (one-sided, consistent with Neumann)
-    diag_upper[0] = 2.0 * a_half[0] / dx2
-    diag_main[0] = -2.0 * a_half[0] / dx2
-
-    # i = N-1: Neumann BC on right — ghost u[N] = u[N-2]
-    diag_lower[N - 2] = 2.0 * a_half[N - 2] / dx2
-    diag_main[N - 1] = -2.0 * a_half[N - 2] / dx2
+    diag_main[:-1] -= a_face / dx2
+    diag_main[1:] -= a_face / dx2
 
     L = (
         sparse.diags(diag_main, 0, shape=(N, N))
-        + sparse.diags(diag_upper, 1, shape=(N, N))
-        + sparse.diags(diag_lower, -1, shape=(N, N))
+        + sparse.diags(a_face / dx2, 1, shape=(N, N))
+        + sparse.diags(a_face / dx2, -1, shape=(N, N))
     ).tocsr()
 
     return L  # type: ignore[return-value]
@@ -189,12 +171,20 @@ def solve_varcoeff_forward(
     beta: float,
     dt: float,
     n_steps: int,
+    forcing=None,
 ) -> tuple[np.ndarray, dict]:
     """
-    Solve u_t = ∂_x(a(x) u_x) forward in time using Crank-Nicolson.
+    Solve u_t = ∂_x(a(x) u_x) + f forward in time using Crank-Nicolson.
 
     Scheme:
-        (I - dt/2 * L) u^{n+1} = (I + dt/2 * L) u^n
+        (I - dt/2 * L) u^{n+1} = (I + dt/2 * L) u^n + dt/2 (f^n + f^{n+1})
+
+    forcing : optional callable f(x_grid, t) -> array.  Used by manufactured
+    -solution convergence tests; None for the physical problem.
+
+    The solver is the declared linear (affine, with forcing) map: no
+    positivity clipping is applied, and a nonfinite state raises immediately
+    rather than propagating silently.
 
     Returns
     -------
@@ -214,9 +204,15 @@ def solve_varcoeff_forward(
 
     for k in range(1, n_steps + 1):
         rhs = B @ u
+        if forcing is not None:
+            t_prev = (k - 1) * dt
+            rhs = rhs + 0.5 * dt * (forcing(x_grid, t_prev)
+                                    + forcing(x_grid, t_prev + dt))
         u = spsolve(A, rhs)
-        # Clip any tiny negatives introduced by numerics
-        u = np.maximum(u, 0.0)
+        if not np.all(np.isfinite(u)):
+            raise RuntimeError(
+                f"variable-coefficient forward solve produced nonfinite values at step {k}"
+            )
         snapshots[k] = u.copy()
 
     return u, snapshots
@@ -405,8 +401,14 @@ def run_varcoeff_estimated(
             raise ValueError(f"Unknown score_method: {score_method!r}")
 
         if not np.all(np.isfinite(scores)):
-            # Clip non-finite to zero rather than aborting immediately
-            scores = np.where(np.isfinite(scores), scores, 0.0)
+            # Fail loudly, matching the main method's policy: nonfinite
+            # scores are never silently replaced.
+            n_bad = int(np.sum(~np.isfinite(scores)))
+            completed = False
+            failure_step = k
+            failure_msg = (f"NaN/Inf in estimated score ({score_method}) at step {k} "
+                           f"({n_bad}/{n_particles} particles)")
+            break
 
         # Compute score error vs oracle
         oracle_scores = numerical_oracle_score(
