@@ -70,9 +70,9 @@ def main() -> int:
         except schema.ProtocolNotFrozen as refusal:
             print(f"refused: {refusal}", file=sys.stderr)
             return 3
-        raise NotImplementedError(
-            "study execution is implemented with the frozen campaign build"
-        )
+        print("not implemented: study execution lands with the frozen "
+              "campaign build", file=sys.stderr)
+        return 4
     return 0
 
 

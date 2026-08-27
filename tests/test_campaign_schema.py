@@ -99,34 +99,20 @@ class ProtocolBindingTests(unittest.TestCase):
     def setUp(self):
         self.text = schema.PROTOCOL_FILE.read_text(encoding="utf-8")
 
-    def test_document_carries_the_schema_literals(self):
-        for needle in (
-            "0.005, 0.007, 0.010, 0.014, 0.020, 0.028, 0.040",
-            "1000, 2000, 4000, 8000, 10000",
-            "1e-10, 1e-8, 1e-6, 1e-4",
-            "65-point",
-            "N = 4000",
-            "**C1**, the exact bounded-domain primary, and **H**",
-            "(200, 2e-3), (400, 1e-3), (800, 5e-4)",
-            "{0.020, 0.014, 0.010, 0.007}",
-            # gate constants and named methods, so a document-only change
-            # to any of them fails this binding
-            "`tau = 1.2`",
-            "`tau = 1.0`",
-            "three preregistered noisy-lambda selections",
-            "at most `1e-6`",
-            "at most `1e-4`",
-            "at least `1.5`",
-            "`1e-13` relative",
-            "`epsilon_abs >= 100 B0`",
-            "Rusanov",
-            "SSPRK3",
-            "monotonized-central",
-            "reconcile to `1e-10` relative",
-            "**Arm R",
-            "**Arm P",
-        ):
+    def test_document_carries_the_schema_derived_needles(self):
+        needles = schema.document_binding_needles()
+        # The needles are generated from schema constants, so changing a
+        # constant without amending the document fails here (and vice versa).
+        self.assertGreaterEqual(len(needles), 20)
+        self.assertIn(f"`tau = {schema.TAU_HEADLINE:.1f}`", needles)
+        self.assertIn(", ".join(f"{h:.3f}" for h in schema.BANDWIDTHS), needles)
+        for needle in needles:
             self.assertIn(needle, self.text, needle)
+
+    def test_checklist_labels_match_the_expected_registry(self):
+        labels = tuple(label for _, label in schema.checklist_items(self.text))
+        self.assertEqual(labels, schema.EXPECTED_CHECKLIST)
+        self.assertEqual(len(schema.EXPECTED_CHECKLIST), 12)
 
     def test_status_line_and_freeze_gate(self):
         status = schema.protocol_status()
@@ -137,13 +123,33 @@ class ProtocolBindingTests(unittest.TestCase):
         else:
             schema.assert_frozen()
 
-    def test_freeze_gate_rejects_unchecked_boxes_even_when_frozen(self):
-        synthetic = ("**Status: FROZEN**\n\n" + schema.CHECKLIST_HEADER
-                     + "\n\n- [x] reviewed one\n- [ ] still open\n")
-        self.assertEqual(schema.status_of(synthetic), "FROZEN")
-        self.assertEqual(len(schema.unchecked_checklist_items(synthetic)), 1)
-        all_checked = synthetic.replace("- [ ]", "- [x]")
-        self.assertEqual(schema.unchecked_checklist_items(all_checked), [])
+    def _synthetic(self, status="FROZEN", drop=None, uncheck=None):
+        lines = []
+        for i, label in enumerate(schema.EXPECTED_CHECKLIST):
+            if drop is not None and i == drop:
+                continue
+            box = " " if (uncheck is not None and i == uncheck) else "x"
+            lines.append(f"- [{box}] {label}")
+        return (f"**Status: {status}**\n\n" + schema.CHECKLIST_HEADER
+                + "\n\n" + "\n".join(lines) + "\n")
+
+    def test_validate_freeze_accepts_only_the_complete_checked_checklist(self):
+        schema.validate_freeze(self._synthetic())  # must not raise
+
+    def test_validate_freeze_rejects_unchecked_box(self):
+        with self.assertRaisesRegex(schema.ProtocolNotFrozen, "unchecked"):
+            schema.validate_freeze(self._synthetic(uncheck=3))
+
+    def test_validate_freeze_rejects_deleted_or_reworded_rows(self):
+        with self.assertRaisesRegex(schema.ProtocolNotFrozen, "expected items"):
+            schema.validate_freeze(self._synthetic(drop=7))
+        reworded = self._synthetic().replace("adequacy gate", "adequacy rule")
+        with self.assertRaisesRegex(schema.ProtocolNotFrozen, "expected items"):
+            schema.validate_freeze(reworded)
+
+    def test_validate_freeze_rejects_proposed_status(self):
+        with self.assertRaisesRegex(schema.ProtocolNotFrozen, "PROPOSED"):
+            schema.validate_freeze(self._synthetic(status="PROPOSED"))
 
     def test_current_document_still_has_open_boxes_while_proposed(self):
         if schema.protocol_status() == "PROPOSED":
