@@ -76,6 +76,7 @@ from invheat_grw.methods import (
 )
 from invheat_grw.scores import smoothed_log_score
 from invheat_grw.metrics import compute_wasserstein
+from invheat_grw.globs import apply_reflecting_boundary
 
 # scipy imports
 from scipy import sparse
@@ -256,13 +257,8 @@ def numerical_oracle_score(
 # Reflecting boundary
 # ---------------------------------------------------------------------------
 def _reflect(positions: np.ndarray, x_min: float, x_max: float) -> np.ndarray:
-    """Reflect particles that escape [x_min, x_max] back into the domain."""
-    L = x_max - x_min
-    # Shift to [0, L]
-    p = positions - x_min
-    p = p % (2.0 * L)
-    p = np.where(p > L, 2.0 * L - p, p)
-    return p + x_min
+    """Exact folded reflection (single shared implementation in globs.py)."""
+    return apply_reflecting_boundary(positions, x_min, x_max)
 
 
 # ---------------------------------------------------------------------------
@@ -298,7 +294,8 @@ def run_varcoeff_oracle(
     x_min, x_max = float(x_min), float(x_max)
     bw = bandwidth_factor * dx
 
-    positions, total_mass = _quantile_init_particles(u_obs, x_grid, n_particles)
+    positions, total_mass = _quantile_init_particles(u_obs, x_grid, n_particles,
+                                                     x_min=x_min, x_max=x_max)
 
     score_errors = []   # L2 error of oracle vs itself (always 0, placeholder)
     t_start = time.perf_counter()
@@ -380,7 +377,8 @@ def run_varcoeff_estimated(
 
     method_name = f"variable_estimated_{score_method}_bw{int(bandwidth_factor)}"
 
-    positions, total_mass = _quantile_init_particles(u_obs, x_grid, n_particles)
+    positions, total_mass = _quantile_init_particles(u_obs, x_grid, n_particles,
+                                                     x_min=x_min, x_max=x_max)
 
     score_errors_l2 = []   # vs numerical oracle, per step
     t_start = time.perf_counter()

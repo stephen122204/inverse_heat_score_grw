@@ -40,10 +40,12 @@ from dataclasses import dataclass
 from typing import Optional
 from .config import Config
 from .methods import MethodResult
+from .cell_grid import midpoint_mass, propagate_heat
 
-# numpy>=2.0 renamed np.trapz -> np.trapezoid (np.trapz removed in 2.x).
-# One alias that works on both 1.x and 2.x.
-_trapz = getattr(np, "trapezoid", None) or getattr(np, "trapz")  # type: ignore[attr-defined]
+
+def _integral(f: np.ndarray, x: np.ndarray) -> float:
+    """Midpoint integral dx * sum(f) of a cell-centered field."""
+    return midpoint_mass(np.asarray(f, dtype=float), float(x[1] - x[0]))
 
 
 # ---------------------------------------------------------------------------
@@ -52,23 +54,13 @@ _trapz = getattr(np, "trapezoid", None) or getattr(np, "trapz")  # type: ignore[
 
 def forward_heat_solve_dct(u: np.ndarray, x_grid: np.ndarray, cfg: Config) -> np.ndarray:
     """
-    Apply exact heat diffusion u -> u(., T) using DCT-II eigenfunctions on [x_min, x_max].
-    Used ONLY for the forward-consistency diagnostic, not the inverse method.
-    Neumann boundary conditions (consistent with reflecting-boundary GRW).
+    Apply exact heat diffusion u -> u(., T) via the cell-centered cosine
+    pseudospectral operator (DCT-II modes are exactly the Neumann
+    eigenfunctions on cell centers).  Used ONLY for the forward-consistency
+    diagnostic, not the inverse method.
     """
-    from scipy.fft import dct, idct
-
-    alpha = cfg.heat.alpha
-    T = cfg.heat.T
-    N = len(u)
-    L = cfg.domain.x_max - cfg.domain.x_min
-
-    c = dct(u, type=2, norm="ortho")
-    k = np.arange(N)
-    lam = (np.pi * k / L) ** 2
-    decay = np.exp(-alpha * T * lam)
-    c_diffused = c * decay
-    return idct(c_diffused, type=2, norm="ortho")  # type: ignore[return-value]
+    return propagate_heat(u, float(cfg.domain.x_max - cfg.domain.x_min),
+                          cfg.heat.alpha, cfg.heat.T)
 
 
 # ---------------------------------------------------------------------------
@@ -111,10 +103,10 @@ def fit_gaussian(
     A0 = float(np.max(u)) if np.max(u) > 0 else 1.0
     mu0 = float(x[np.argmax(u)])
     u_pos = np.maximum(u, 0.0)
-    mass = _trapz(u_pos, x)  # type: ignore[attr-defined]
+    mass = _integral(u_pos, x)
     if mass > 0:
-        mean = _trapz(x * u_pos, x) / mass  # type: ignore[attr-defined]
-        var = _trapz((x - mean) ** 2 * u_pos, x) / mass  # type: ignore[attr-defined]
+        mean = _integral(x * u_pos, x) / mass
+        var = _integral((x - mean) ** 2 * u_pos, x) / mass
         sigma0_g = float(np.sqrt(var)) if var > 0 else 0.08
     else:
         sigma0_g = 0.08
@@ -147,11 +139,11 @@ def compute_moment_width(u: np.ndarray, x: np.ndarray) -> tuple[float, float]:
     Returns (sigma_moment, width_moment) where width_moment = 2 * sigma_moment.
     """
     u_pos = np.maximum(u, 0.0)
-    mass = _trapz(u_pos, x)  # type: ignore[attr-defined]
+    mass = _integral(u_pos, x)
     if mass <= 0:
         return float("nan"), float("nan")
-    mean = _trapz(x * u_pos, x) / mass  # type: ignore[attr-defined]
-    var = _trapz((x - mean) ** 2 * u_pos, x) / mass  # type: ignore[attr-defined]
+    mean = _integral(x * u_pos, x) / mass
+    var = _integral((x - mean) ** 2 * u_pos, x) / mass
     sigma_m = float(np.sqrt(var)) if var > 0 else 0.0
     return sigma_m, 2.0 * sigma_m
 
@@ -268,8 +260,8 @@ def compute_metrics(
     fwd_l2 = fwd_l2_absolute / observed_l2 if observed_l2 > 0.0 else float("nan")
 
     # Mass conservation
-    mass_cand = float(_trapz(candidate, x_grid))  # type: ignore[attr-defined]
-    mass_true_val = float(_trapz(true_u0, x_grid))  # type: ignore[attr-defined]
+    mass_cand = _integral(candidate, x_grid)
+    mass_true_val = _integral(true_u0, x_grid)
     mass_err = mass_cand - mass_true_val
     mass_rel_err = mass_err / mass_true_val if mass_true_val > 0 else float("nan")
 
@@ -349,8 +341,8 @@ def compute_wasserstein(
     # Guard against overflow (large k_cut_mult can blow up spectral reconstructions)
     if not (np.all(np.isfinite(c)) and np.all(np.isfinite(t))):
         return float("nan")
-    mc = float(_trapz(c, x_grid))  # type: ignore[attr-defined]
-    mt = float(_trapz(t, x_grid))  # type: ignore[attr-defined]
+    mc = _integral(c, x_grid)
+    mt = _integral(t, x_grid)
     if not (np.isfinite(mc) and mc > 0.0 and np.isfinite(mt) and mt > 0.0):
         return float("nan")
     c_norm = c / mc

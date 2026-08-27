@@ -71,9 +71,7 @@ from .scores import (
     smoothed_log_score,
 )
 from .neumann_kernels import neumann_kde_density_derivative, neumann_kde_score
-
-# numpy>=2.0 renamed np.trapz -> np.trapezoid (np.trapz removed in 2.x).
-_trapz = getattr(np, "trapezoid", None) or getattr(np, "trapz")  # type: ignore[attr-defined]
+from .cell_grid import cell_edge_quantile_positions
 
 
 # ---------------------------------------------------------------------------
@@ -164,36 +162,29 @@ def _quantile_init_particles(
     u_obs: np.ndarray,
     x_grid: np.ndarray,
     n_particles: int,
+    *,
+    x_min: float,
+    x_max: float,
 ) -> tuple[np.ndarray, float]:
     """
     Initialize density particles from u_obs by deterministic quantile placement.
 
-    Treats u_obs as a non-negative mass distribution.  Places n_particles at
-    the quantile positions (i + 0.5) / n_particles for i = 0..n_particles-1,
-    so the empirical CDF matches u_obs as closely as possible.
+    Treats each grid value as the density of its cell on the cell-centered
+    grid: cell masses are max(u_j, 0) * dx, the CDF is exact and piecewise
+    linear at the cell edges, and each quantile target (i + 1/2)/N is
+    inverted linearly within its cell (cell_grid.cell_edge_quantile_positions).
+    Negative observation values carry no mass, as before.  The physical walls
+    are required keywords; the cell edges are built from them, never from the
+    sample coordinates.
 
     Returns
     -------
     positions : (n_particles,) array of initial particle x-coordinates.
-    total_mass : float, integral of u_obs over x_grid.
+    total_mass : float, midpoint-rule mass of the clipped field.
     """
-    u_pos = np.maximum(u_obs, 0.0)
-    dx = x_grid[1] - x_grid[0]
-    total_mass = float(_trapz(u_pos, x_grid))  # type: ignore[attr-defined]
-    if total_mass <= 0.0:
-        # Fallback: uniform placement
-        positions = np.linspace(x_grid[0], x_grid[-1], n_particles)
-        return positions, 0.0
-
-    # Trapezoidal CDF on x_grid: cdf[0]=0, cdf[-1]=total_mass (before normalizing)
-    segments = 0.5 * (u_pos[:-1] + u_pos[1:]) * dx
-    cdf = np.concatenate([[0.0], np.cumsum(segments)])
-    cdf /= total_mass  # normalize to [0, 1]
-
-    # Deterministic quantile inversion
-    quantiles = (np.arange(n_particles) + 0.5) / n_particles
-    positions = np.interp(quantiles, cdf, x_grid)
-    return positions, total_mass
+    if len(u_obs) != len(x_grid):
+        raise ValueError("u_obs and x_grid must have the same length")
+    return cell_edge_quantile_positions(u_obs, float(x_min), float(x_max), n_particles)
 
 
 def _reconstruct_density_particles(
@@ -234,8 +225,11 @@ def _reconstruct_density_particles(
     dx = x_grid[1] - x_grid[0]
 
     if recon_method == "histogram":
-        x_min_h = x_grid[0] - 0.5 * dx
-        x_max_h = x_grid[-1] + 0.5 * dx
+        if x_min is not None and x_max is not None:
+            x_min_h, x_max_h = float(x_min), float(x_max)
+        else:
+            x_min_h = x_grid[0] - 0.5 * dx
+            x_max_h = x_grid[-1] + 0.5 * dx
         counts, _ = np.histogram(positions, bins=n_grid, range=(x_min_h, x_max_h))
         u_recon = counts.astype(float) * (total_mass / N) / dx
         return u_recon
@@ -900,7 +894,8 @@ def run_density_particle_oracle_score_deterministic(
     result.bandwidth_used = bw if recon_method == "kde" else float("nan")
 
     # Step 1: initialize density particles
-    positions, total_mass = _quantile_init_particles(u_obs, x_grid, n_particles)
+    positions, total_mass = _quantile_init_particles(u_obs, x_grid, n_particles,
+                                                     x_min=x_min, x_max=x_max)
     result.mass_initial = total_mass
 
     # Step-zero reconstruction error (quantifies representation quality at t=T)
@@ -1132,7 +1127,8 @@ def run_density_particle_estimated_score_deterministic(
     result.epsilon_used = epsilon  # base epsilon before scale_by_peak
 
     # Initialize density particles from u_obs
-    positions, total_mass = _quantile_init_particles(u_obs, x_grid, n_particles)
+    positions, total_mass = _quantile_init_particles(u_obs, x_grid, n_particles,
+                                                     x_min=x_min, x_max=x_max)
     result.mass_initial = total_mass
 
     # Step-zero reconstruction error (quantifies KDE/histogram fit at t=T)
@@ -1167,7 +1163,7 @@ def run_density_particle_estimated_score_deterministic(
         result.epsilon_actual_per_step.append(epsilon_actual)
 
         # --- Per-step mass tracking ---
-        mass_recon = float(_trapz(u_recon, x_grid))  # type: ignore[attr-defined]
+        mass_recon = float(dx * np.sum(u_recon))
         result.mass_per_step.append(mass_recon)
 
         # --- Denominator diagnostic: count grid pts where u < epsilon_actual ---
