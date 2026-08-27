@@ -107,7 +107,8 @@ chk("0.134","sec5.2 B bw16", sw("B","smoothed_log",16.0), "score audit CSV")
 # The constant-case CSV stores an absolute forward residual, whereas the paper
 # reports the relative value.  Reconstruct the documented denominator here so
 # the two headline endpoints are explicit verifier checks rather than hidden
-# hand conversions.  The schema itself is repaired in the new method branch.
+# hand conversions. New runs store the relative quantity directly; this
+# conversion remains only because the v5.1 archive predates that schema fix.
 cfg_z = copy.deepcopy(load_config(str(REPO / "configs" / "gaussian_base.yaml")))
 cfg_z.heat.T = 0.05
 cfg_z.initial_condition.sigma0 = 0.05
