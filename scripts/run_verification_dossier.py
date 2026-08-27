@@ -478,10 +478,15 @@ def main() -> None:
             "leaves the error unchanged: the endpoint-era h = c * dx coupling "
             "that confounded the archived grid study is gone.",
         "particle_M_coupled_control": "The paired control reinstates the "
-            "endpoint-era coupling h = 8 dx: the error now falls with the "
-            "grid exactly as the archived curve did, tracking the shrinking "
-            "kernel-bias floor.  Together with the fixed-h table this proves "
-            "the archived grid 'convergence' was the bandwidth coupling.",
+            "endpoint-era coupling rule (h proportional to dx; here h = 8 dx): "
+            "the error falls with the grid while tracking the shrinking "
+            "kernel-bias floor.  This reproduces the confounding mechanism "
+            "behind the archived grid curves; it is not a literal replay of "
+            "them, which no run on the corrected stack can be (the archived "
+            "studies used h = 4 dx with the free-space kernel on an endpoint "
+            "grid).  Together with the fixed-h table it proves that grid "
+            "'convergence' under a grid-coupled bandwidth measures the "
+            "bandwidth, not the grid.",
     }
     lines = [
         "# Operator-verification dossier",
