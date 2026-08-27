@@ -1,0 +1,90 @@
+{
+  "code_commit": "ec25b43cfe03f9a54a84f1c482646e0022c5fd17",
+  "command": "/Library/Frameworks/Python.framework/Versions/3.11/bin/python3.11 scripts/generate_figure_data.py",
+  "created_utc": "2026-08-27T05:13:20.631795+00:00",
+  "environment": {
+    "numpy": "2.4.4",
+    "platform": "macOS-26.3.1-arm64-arm-64bit",
+    "python": "3.11.4"
+  },
+  "figures": {
+    "fig_density_loop": [
+      "dt",
+      "snapshot_steps",
+      "snapshots",
+      "u0",
+      "uT",
+      "x"
+    ],
+    "fig_naive": [
+      "naive",
+      "rng_seed",
+      "score",
+      "u0",
+      "uT",
+      "x"
+    ],
+    "fig_representation_failure": [
+      "density",
+      "e2_density",
+      "e2_glob",
+      "g",
+      "glob",
+      "rng_seed",
+      "u0",
+      "x"
+    ],
+    "fig_variable_field": [
+      "a",
+      "beta",
+      "candidate",
+      "u0",
+      "uT",
+      "x"
+    ]
+  },
+  "parameters": {
+    "fig_density_loop": {
+      "T": 0.15,
+      "bandwidth_factor": 4.0,
+      "epsilon": 1e-08,
+      "n_grid": 400,
+      "n_particles": 5000,
+      "recon_method": "kde",
+      "score_method": "smoothed_log",
+      "sigma0": 0.08,
+      "smooth_sigma_factor": 1.0,
+      "test": "B"
+    },
+    "fig_naive": {
+      "T": 0.15,
+      "bandwidth_factor": 4.0,
+      "n_grid": 400,
+      "n_particles": 5000,
+      "naive_rng_seed": 0,
+      "recon_method": "kde",
+      "sigma0": 0.08,
+      "test": "B"
+    },
+    "fig_representation_failure": {
+      "T": 0.15,
+      "density_bandwidth_factor": 4.0,
+      "density_n_particles": 5000,
+      "glob_rng_seed": 42,
+      "gradient_globs_per_jump": 80,
+      "n_grid": 400,
+      "sigma0": 0.08,
+      "test": "B"
+    },
+    "fig_variable_field": {
+      "T": 0.15,
+      "bandwidth_factor": 4.0,
+      "beta": 0.9,
+      "dt": 0.001,
+      "ic": "gaussian_base",
+      "n_grid": 400,
+      "n_particles": 10000,
+      "score_method": "smoothed_log"
+    }
+  }
+}
