@@ -91,10 +91,14 @@ def tophat_u0(x):
     return 0.1 + 0.9 * ((x >= 0.30) & (x <= 0.60)).astype(float)
 
 
-def dct_propagate(u0, x, t, alpha=ALPHA):
-    """Spectral (cosine-transform) heat propagation to time t on Neumann [0,1]."""
+def dct_propagate(u0, x, t, alpha=ALPHA, *, length: float):
+    """Spectral (cosine-transform) heat propagation to time t on Neumann [0,L].
+
+    length is the physical domain extent from the configuration (required
+    keyword; the sample span is not a valid substitute on a cell-centered
+    grid)."""
     N = len(u0)
-    L = float(x[-1] - x[0])
+    L = float(length)
     c = dct(u0, type=2, norm="ortho")
     k_n = np.arange(N) * np.pi / L
     c_t = c * np.exp(-alpha * k_n ** 2 * t)
@@ -103,6 +107,7 @@ def dct_propagate(u0, x, t, alpha=ALPHA):
 
 def run_case(name, u0_fn, T, x, cfg):
     dx = float(x[1] - x[0])
+    length = float(cfg.domain.x_max - cfg.domain.x_min)
     n_steps = round(T / DT)
     u0 = u0_fn(x)
     u0_norm = float(np.sqrt(dx * np.sum(u0 ** 2)))
@@ -111,8 +116,8 @@ def run_case(name, u0_fn, T, x, cfg):
         return float(np.sqrt(dx * np.sum((c - u0) ** 2))) / u0_norm
 
     # forward field + true snapshots (for exact-score)
-    g = dct_propagate(u0, x, T)
-    snapshots = {k: dct_propagate(u0, x, k * DT) for k in range(n_steps + 1)}
+    g = dct_propagate(u0, x, T, length=length)
+    snapshots = {k: dct_propagate(u0, x, k * DT, length=length) for k in range(n_steps + 1)}
     # forward structure diagnostic
     contrast = float((g.max() - g.min()) / (u0.max() - u0.min()))
 
@@ -124,7 +129,8 @@ def run_case(name, u0_fn, T, x, cfg):
         warnings.simplefilter("ignore", RuntimeWarning)
         r_or = vc.run_varcoeff_oracle(
             g, x, snapshots, ALPHA, 0.0, DT, n_steps,
-            n_particles=N_PARTICLES, recon_method="kde", bandwidth_factor=4.0)
+            n_particles=N_PARTICLES, recon_method="kde", bandwidth_factor=4.0,
+            x_min=float(cfg.domain.x_min), x_max=float(cfg.domain.x_max))
     cands["exact_score"] = r_or["candidate"]
     results["exact_score"] = {"E2": rel_l2(r_or["candidate"]), "bw": 4.0,
                               "completed": r_or["completed"]}
@@ -152,7 +158,7 @@ def run_case(name, u0_fn, T, x, cfg):
     for lam in TIKHONOV_LAMBDAS:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
-            tr = tikhonov_inverse(g, x, ALPHA, T, lam)
+            tr = tikhonov_inverse(g, x, ALPHA, T, lam, length=length)
         if np.all(np.isfinite(tr.candidate)):
             e2 = rel_l2(tr.candidate)
             if e2 < best_tik_e2:
@@ -162,7 +168,7 @@ def run_case(name, u0_fn, T, x, cfg):
 
     # --- forward consistency of the best smoothed-log reconstruction ---
     g_norm = float(np.sqrt(dx * np.sum(g ** 2)))
-    fwd_best = dct_propagate(best_cand, x, T)
+    fwd_best = dct_propagate(best_cand, x, T, length=length)
     e_fwd_best = float(np.sqrt(dx * np.sum((fwd_best - g) ** 2))) / g_norm
 
     return {

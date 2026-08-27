@@ -125,7 +125,8 @@ def compute_fig_variable_field() -> dict[str, np.ndarray]:
     uT, snaps = vc.solve_varcoeff_forward(u0, x, alpha0, beta, dt, n_steps)
     r = vc.run_varcoeff_estimated(
         uT, x, snaps, alpha0, beta, dt, n_steps,
-        score_method="smoothed_log", bandwidth_factor=4.0, n_particles=10000)
+        score_method="smoothed_log", bandwidth_factor=4.0, n_particles=10000,
+        x_min=float(cfg.domain.x_min), x_max=float(cfg.domain.x_max))
     a = vc.a_of_x(x, alpha0, beta)
     return {"x": x, "u0": u0, "uT": uT,
             "candidate": np.asarray(r["candidate"], dtype=float), "a": a,

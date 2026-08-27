@@ -202,6 +202,9 @@ def _reconstruct_density_particles(
     x_grid: np.ndarray,
     recon_method: str,
     bandwidth: float,
+    *,
+    x_min: "float | None" = None,
+    x_max: "float | None" = None,
 ) -> np.ndarray:
     """
     Reconstruct field u on x_grid from density particle positions.
@@ -218,6 +221,9 @@ def _reconstruct_density_particles(
     recon_method : "histogram", legacy free-space "kde", or "neumann_kde".
     bandwidth    : KDE bandwidth in x-units (ignored for histogram).
                    If <= 0 for KDE, falls back to Scott's rule.
+    x_min, x_max : physical domain walls from the configuration.  Required
+                   for "neumann_kde"; the sample-based methods bin or place
+                   kernels on the grid coordinates and do not use them.
 
     Returns
     -------
@@ -247,6 +253,11 @@ def _reconstruct_density_particles(
         return u_recon
 
     elif recon_method == "neumann_kde":
+        if x_min is None or x_max is None:
+            raise ValueError(
+                "recon_method='neumann_kde' requires the explicit physical "
+                "walls x_min and x_max from the configuration"
+            )
         bw = bandwidth
         if bw <= 0.0:
             std_pos = float(np.std(positions))
@@ -256,8 +267,8 @@ def _reconstruct_density_particles(
             x_grid,
             positions,
             weights,
-            float(x_grid[0]),
-            float(x_grid[-1]),
+            float(x_min),
+            float(x_max),
             bw,
         )
         return u_recon
@@ -870,8 +881,8 @@ def run_density_particle_oracle_score_deterministic(
     alpha = cfg.heat.alpha
     dt = cfg.heat.dt
     n_steps = cfg.n_steps
-    x_min = float(x_grid[0])
-    x_max = float(x_grid[-1])
+    x_min = float(cfg.domain.x_min)
+    x_max = float(cfg.domain.x_max)
     dx = float(x_grid[1] - x_grid[0])
     bw = bandwidth_factor * dx
 
@@ -893,7 +904,8 @@ def run_density_particle_oracle_score_deterministic(
     result.mass_initial = total_mass
 
     # Step-zero reconstruction error (quantifies representation quality at t=T)
-    u_recon_t0 = _reconstruct_density_particles(positions, total_mass, x_grid, recon_method, bw)
+    u_recon_t0 = _reconstruct_density_particles(positions, total_mass, x_grid, recon_method, bw,
+                x_min=x_min, x_max=x_max)
     u_obs_norm = float(np.sqrt(dx * np.sum(u_obs ** 2)))
     if u_obs_norm > 0.0:
         step0_diff = u_recon_t0 - u_obs
@@ -917,7 +929,8 @@ def run_density_particle_oracle_score_deterministic(
             result.failure_step = k
             result.failure_msg = f"Oracle score NaN/Inf at step {k}"
             result.candidate = _reconstruct_density_particles(
-                positions, total_mass, x_grid, recon_method, bw)
+                positions, total_mass, x_grid, recon_method, bw,
+                x_min=x_min, x_max=x_max)
             result.final_positions = positions.copy()
             result.runtime_seconds = time.perf_counter() - t_start
             return result
@@ -929,7 +942,8 @@ def run_density_particle_oracle_score_deterministic(
                 f"> {score_fail_thresh:.3e} at step {k}"
             )
             result.candidate = _reconstruct_density_particles(
-                positions, total_mass, x_grid, recon_method, bw)
+                positions, total_mass, x_grid, recon_method, bw,
+                x_min=x_min, x_max=x_max)
             result.final_positions = positions.copy()
             result.runtime_seconds = time.perf_counter() - t_start
             return result
@@ -951,7 +965,8 @@ def run_density_particle_oracle_score_deterministic(
             result.failure_step = k + 1
             result.failure_msg = f"NaN/Inf in particle positions at step {k + 1}"
             result.candidate = _reconstruct_density_particles(
-                positions, total_mass, x_grid, recon_method, bw)
+                positions, total_mass, x_grid, recon_method, bw,
+                x_min=x_min, x_max=x_max)
             result.final_positions = positions.copy()
             result.runtime_seconds = time.perf_counter() - t_start
             return result
@@ -962,7 +977,8 @@ def run_density_particle_oracle_score_deterministic(
                 f"Particle position magnitude > {pos_fail_thresh:.3e} at step {k + 1}"
             )
             result.candidate = _reconstruct_density_particles(
-                positions, total_mass, x_grid, recon_method, bw)
+                positions, total_mass, x_grid, recon_method, bw,
+                x_min=x_min, x_max=x_max)
             result.final_positions = positions.copy()
             result.runtime_seconds = time.perf_counter() - t_start
             return result
@@ -970,7 +986,8 @@ def run_density_particle_oracle_score_deterministic(
     # All steps completed successfully
     result.completed = True
     result.candidate = _reconstruct_density_particles(
-        positions, total_mass, x_grid, recon_method, bw)
+        positions, total_mass, x_grid, recon_method, bw,
+                x_min=x_min, x_max=x_max)
     result.final_positions = positions.copy()
     result.runtime_seconds = time.perf_counter() - t_start
     return result
@@ -1066,8 +1083,8 @@ def run_density_particle_estimated_score_deterministic(
     alpha = cfg.heat.alpha
     dt = cfg.heat.dt
     n_steps = cfg.n_steps
-    x_min = float(x_grid[0])
-    x_max = float(x_grid[-1])
+    x_min = float(cfg.domain.x_min)
+    x_max = float(cfg.domain.x_max)
     dx = float(x_grid[1] - x_grid[0])
 
     # Determine KDE bandwidth
@@ -1119,7 +1136,8 @@ def run_density_particle_estimated_score_deterministic(
     result.mass_initial = total_mass
 
     # Step-zero reconstruction error (quantifies KDE/histogram fit at t=T)
-    u_recon_t0 = _reconstruct_density_particles(positions, total_mass, x_grid, recon_method, bw)
+    u_recon_t0 = _reconstruct_density_particles(positions, total_mass, x_grid, recon_method, bw,
+                x_min=x_min, x_max=x_max)
     u_obs_norm = float(np.sqrt(dx * np.sum(u_obs ** 2)))
     if u_obs_norm > 0.0:
         step0_diff = u_recon_t0 - u_obs
@@ -1137,7 +1155,8 @@ def run_density_particle_estimated_score_deterministic(
         t_phys = cfg.heat.T - k * dt
 
         # --- Reconstruct density on grid from current particle positions ---
-        u_recon = _reconstruct_density_particles(positions, total_mass, x_grid, recon_method, bw)
+        u_recon = _reconstruct_density_particles(positions, total_mass, x_grid, recon_method, bw,
+                x_min=x_min, x_max=x_max)
 
         # --- Compute effective epsilon for this step ---
         if scale_epsilon_by_peak:
@@ -1309,7 +1328,8 @@ def run_density_particle_estimated_score_deterministic(
                 f"n_denom_zero={n_below_eps}"
             )
             result.candidate = _reconstruct_density_particles(
-                positions, total_mass, x_grid, recon_method, bw)
+                positions, total_mass, x_grid, recon_method, bw,
+                x_min=x_min, x_max=x_max)
             result.final_positions = positions.copy()
             result.runtime_seconds = time.perf_counter() - t_start
             return result
@@ -1322,7 +1342,8 @@ def run_density_particle_estimated_score_deterministic(
                 f"score_method={score_method}, epsilon_actual={epsilon_actual:.2e}"
             )
             result.candidate = _reconstruct_density_particles(
-                positions, total_mass, x_grid, recon_method, bw)
+                positions, total_mass, x_grid, recon_method, bw,
+                x_min=x_min, x_max=x_max)
             result.final_positions = positions.copy()
             result.runtime_seconds = time.perf_counter() - t_start
             return result
@@ -1344,7 +1365,8 @@ def run_density_particle_estimated_score_deterministic(
             result.failure_step = k + 1
             result.failure_msg = f"NaN/Inf in particle positions at step {k + 1}"
             result.candidate = _reconstruct_density_particles(
-                positions, total_mass, x_grid, recon_method, bw)
+                positions, total_mass, x_grid, recon_method, bw,
+                x_min=x_min, x_max=x_max)
             result.final_positions = positions.copy()
             result.runtime_seconds = time.perf_counter() - t_start
             return result
@@ -1355,7 +1377,8 @@ def run_density_particle_estimated_score_deterministic(
                 f"Particle position magnitude > {pos_fail_thresh:.3e} at step {k + 1}"
             )
             result.candidate = _reconstruct_density_particles(
-                positions, total_mass, x_grid, recon_method, bw)
+                positions, total_mass, x_grid, recon_method, bw,
+                x_min=x_min, x_max=x_max)
             result.final_positions = positions.copy()
             result.runtime_seconds = time.perf_counter() - t_start
             return result
@@ -1363,13 +1386,15 @@ def run_density_particle_estimated_score_deterministic(
         # --- Optional field snapshot at key steps ---
         if save_snapshots and (k + 1) in snapshot_steps:
             snap = _reconstruct_density_particles(
-                positions, total_mass, x_grid, recon_method, bw)
+                positions, total_mass, x_grid, recon_method, bw,
+                x_min=x_min, x_max=x_max)
             result.step_snapshots[k + 1] = snap.copy()
 
     # All steps completed successfully
     result.completed = True
     result.candidate = _reconstruct_density_particles(
-        positions, total_mass, x_grid, recon_method, bw)
+        positions, total_mass, x_grid, recon_method, bw,
+                x_min=x_min, x_max=x_max)
     result.final_positions = positions.copy()
     result.runtime_seconds = time.perf_counter() - t_start
     return result

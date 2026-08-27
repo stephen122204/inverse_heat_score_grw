@@ -424,7 +424,8 @@ def run_tikhonov_best_cell(test: str, cfg: Config, n_grid: int) -> dict:
     for lam in TIKHONOV_LAMBDAS:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
-            tr = tikhonov_inverse(u_obs, x_grid, alpha, T_val, lam)
+            tr = tikhonov_inverse(u_obs, x_grid, alpha, T_val, lam,
+                                  length=float(cfg_r.domain.x_max - cfg_r.domain.x_min))
         if not np.all(np.isfinite(tr.candidate)):
             continue
         with warnings.catch_warnings():
@@ -790,7 +791,8 @@ def plot_field_comparison_best(
     for lam in TIKHONOV_LAMBDAS:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
-            tr = tikhonov_inverse(u_obs, x_grid, alpha, T_val, lam)
+            tr = tikhonov_inverse(u_obs, x_grid, alpha, T_val, lam,
+                                  length=float(cfg_r.domain.x_max - cfg_r.domain.x_min))
         if not np.all(np.isfinite(tr.candidate)):
             continue
         with warnings.catch_warnings():

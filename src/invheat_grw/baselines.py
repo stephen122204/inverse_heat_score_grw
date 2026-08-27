@@ -80,6 +80,21 @@ class TikhonovResult:
 # Spectral cutoff inversion
 # ---------------------------------------------------------------------------
 
+def _validated_length(length: float) -> float:
+    """The physical domain extent x_max - x_min, supplied by the caller.
+
+    The spectral wavenumbers k_n = n*pi/L must use the physical walls from
+    the configuration.  Inferring L from the first and last sample
+    coordinates is correct only for endpoint grids and silently shifts every
+    eigenvalue on a cell-centered grid, so no fallback is provided.
+    """
+    if not (math.isfinite(length) and length > 0.0):
+        raise ValueError(
+            f"length must be the positive physical domain extent, got {length!r}"
+        )
+    return float(length)
+
+
 def spectral_cutoff_inverse(
     observed: np.ndarray,
     x_grid: np.ndarray,
@@ -87,6 +102,8 @@ def spectral_cutoff_inverse(
     T: float,
     k_cut: Optional[float] = None,
     noise_delta: Optional[float] = None,
+    *,
+    length: float,
 ) -> SpectralCutoffResult:
     """
     Invert the heat equation via spectral cutoff.
@@ -102,13 +119,15 @@ def spectral_cutoff_inverse(
     noise_delta : noise level estimate; used to compute k_cut automatically:
                   k_cut = sqrt(log(1/noise_delta) / (alpha * T)).
                   Default: 1e-8 (essentially noiseless, aggressive retention).
+    length      : physical domain extent x_max - x_min (required keyword;
+                  see _validated_length).
 
     Returns
     -------
     SpectralCutoffResult with candidate field and diagnostics.
     """
     N = len(observed)
-    L = float(x_grid[-1] - x_grid[0])
+    L = _validated_length(length)
 
     if noise_delta is None:
         noise_delta = 1e-8
@@ -163,6 +182,8 @@ def tikhonov_inverse(
     alpha: float,
     T: float,
     lam: float,
+    *,
+    length: float,
 ) -> TikhonovResult:
     """
     Tikhonov-regularized inversion of the heat equation.
@@ -180,6 +201,8 @@ def tikhonov_inverse(
     alpha    : thermal diffusivity.
     T        : forward diffusion time.
     lam      : Tikhonov regularization parameter (> 0).
+    length   : physical domain extent x_max - x_min (required keyword;
+               see _validated_length).
 
     Returns
     -------
@@ -189,7 +212,7 @@ def tikhonov_inverse(
         raise ValueError(f"Tikhonov lambda must be positive, got {lam}")
 
     N = len(observed)
-    L = float(x_grid[-1] - x_grid[0])
+    L = _validated_length(length)
 
     c: np.ndarray = dct(observed, type=2, norm="ortho")  # type: ignore[assignment]
 

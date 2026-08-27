@@ -258,7 +258,8 @@ def _find_tikhonov_best(u_obs: np.ndarray, x_grid: np.ndarray,
     for lam in lambdas:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
-            tr = tikhonov_inverse(u_obs, x_grid, alpha, T, lam)
+            tr = tikhonov_inverse(u_obs, x_grid, alpha, T, lam,
+                                  length=float(cfg.domain.x_max - cfg.domain.x_min))
         if not np.all(np.isfinite(tr.candidate)):
             continue
         dx = x_grid[1] - x_grid[0]
@@ -279,7 +280,8 @@ def _find_spectral_best(u_obs: np.ndarray, x_grid: np.ndarray,
     for nd in SPECTRAL_NOISE_DELTAS:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
-            sr = spectral_cutoff_inverse(u_obs, x_grid, alpha, T, noise_delta=nd)
+            sr = spectral_cutoff_inverse(u_obs, x_grid, alpha, T, noise_delta=nd,
+                                         length=float(cfg.domain.x_max - cfg.domain.x_min))
         if not np.all(np.isfinite(sr.candidate)):
             continue
         dx = x_grid[1] - x_grid[0]
@@ -503,7 +505,8 @@ def run_task2_noise(
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore", RuntimeWarning)
                     tr_fixed = tikhonov_inverse(u_obs, x_grid, cfg.heat.alpha,
-                                               cfg.heat.T, tikhonov_clean_lam)
+                                               cfg.heat.T, tikhonov_clean_lam,
+                                               length=float(cfg.domain.x_max - cfg.domain.x_min))
                 fr = _SimpleResult(tr_fixed.candidate, f"tikhonov_fixed_lam={tikhonov_clean_lam:.0e}")
                 dx = x_grid[1] - x_grid[0]
                 diff = tr_fixed.candidate - true_u
