@@ -1,6 +1,6 @@
 # Phase 2C science-campaign protocol
 
-**Status: PROPOSED — amended after independent review; no campaign runs are authorized until this line reads FROZEN in its own commit.**
+**Status: FROZEN — preregistration complete; campaign execution is authorized only under the gates, grids, and accounting rules of this document.**
 
 **Baseline:** nested-repository tag `sinum-phase2b-v1`, with the verified cell-centered dossier pinned by `manifests/phase2b_verification.json`. The root tag of the same name includes only the inert proposed-protocol commit beyond the exact nested Phase 2B boundary; the nested tag is the authoritative code baseline.
 
@@ -349,17 +349,17 @@ No manuscript accuracy, novelty, or comparison prose is finalized until the pinn
 
 ## Freeze checklist
 
-- [ ] Primary/secondary case roles and analytic formulas independently checked.
-- [ ] Fixed discretization and `N = 4000` adequacy gate accepted.
-- [ ] Physical bandwidth grid, endpoint censoring, and noiseless rule accepted.
-- [ ] Score-floor diagnostics and fixed headline epsilon accepted.
-- [ ] Input-only positivity arms and residual normalization accepted.
-- [ ] Continuous-lambda scan/refinement and boundary rules accepted.
-- [ ] Paired noise seeds, selection labels, and paired summaries accepted.
-- [ ] De-crimed variable-data projection and convergence gate accepted.
-- [ ] Closure definitions, wrong-limit reference, and exact field decomposition accepted.
-- [ ] Canonical estimator/self-interaction and transition-table scope accepted.
-- [ ] Row accounting, acceptance gates, provenance, and amendment rules accepted.
-- [ ] Status changed from PROPOSED to FROZEN in a dedicated commit.
+- [x] Primary/secondary case roles and analytic formulas independently checked.
+- [x] Fixed discretization and `N = 4000` adequacy gate accepted.
+- [x] Physical bandwidth grid, endpoint censoring, and noiseless rule accepted.
+- [x] Score-floor diagnostics and fixed headline epsilon accepted.
+- [x] Input-only positivity arms and residual normalization accepted.
+- [x] Continuous-lambda scan/refinement and boundary rules accepted.
+- [x] Paired noise seeds, selection labels, and paired summaries accepted.
+- [x] De-crimed variable-data projection and convergence gate accepted.
+- [x] Closure definitions, wrong-limit reference, and exact field decomposition accepted.
+- [x] Canonical estimator/self-interaction and transition-table scope accepted.
+- [x] Row accounting, acceptance gates, provenance, and amendment rules accepted.
+- [x] Status changed from PROPOSED to FROZEN in a dedicated commit.
 
 Scientific experiment runs begin only after all boxes are checked and the status line is FROZEN.
