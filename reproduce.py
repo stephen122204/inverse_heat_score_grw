@@ -112,8 +112,14 @@ def main():
     commands: list[dict] = []
     if not args.figures_only:
         for key, pattern, label, argv in STEPS:
+            run_argv = list(argv)
+            if key == "discrepancy_final":
+                sweep = studies.get("discrepancy_sweep")
+                if sweep is None:
+                    raise RuntimeError("discrepancy_final requires the current run's discrepancy_sweep")
+                run_argv.extend(["--source-dir", str(sweep)])
             before = output_dirs(pattern)
-            elapsed = run(argv, label)
+            elapsed = run(run_argv, label)
             created = output_dirs(pattern) - before
             if len(created) != 1:
                 raise RuntimeError(
@@ -123,7 +129,7 @@ def main():
             studies[key] = next(iter(created))
             commands.append({
                 "study": key,
-                "argv": [PY] + argv,
+                "argv": [PY] + run_argv,
                 "elapsed_seconds": elapsed,
             })
 
