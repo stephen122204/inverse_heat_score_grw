@@ -128,23 +128,14 @@ def reconstruct_field(state: GlobState, x: np.ndarray) -> np.ndarray:
 
 def apply_reflecting_boundary(positions: np.ndarray, x_min: float, x_max: float) -> np.ndarray:
     """
-    Apply reflecting boundary conditions to glob positions.
+    Apply reflecting boundary conditions to particle positions.
 
-    Globs that exit [x_min, x_max] are reflected back.
-    One mirror pass per wall, then a clip fallback for displacements
-    longer than the domain (never reached at the paper's step sizes).
+    Exact folded map: with y = (x - x_min) mod 2L, positions map to
+    x_min + y for y <= L and to x_max - (y - L) otherwise.  This handles
+    displacements of arbitrary length with no clipping, so no trajectory is
+    ever silently altered by a fallback.  This is the single reflection
+    implementation for every particle method in the project.
     """
-    pos = positions.copy()
     L = x_max - x_min
-
-    # Reflect off left wall
-    below = pos < x_min
-    pos[below] = 2.0 * x_min - pos[below]
-
-    # Reflect off right wall
-    above = pos > x_max
-    pos[above] = 2.0 * x_max - pos[above]
-
-    # Clip any remaining out-of-bounds (handles extreme steps)
-    pos = np.clip(pos, x_min, x_max)
-    return pos
+    y = np.mod(positions - x_min, 2.0 * L)
+    return x_min + np.where(y > L, 2.0 * L - y, y)

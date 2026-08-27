@@ -26,13 +26,22 @@ from .config import Config
 
 # The spatial discretization convention make_grid implements.  Frozen figure
 # datasets and run manifests record this string; the live figure-freeze gate
-# compares it against the archive it is asked to verify.
-GRID_CONVENTION = "endpoint"
+# compares it against the archive it is asked to verify.  The archived paper
+# v5.1 outputs use the earlier "endpoint" convention and are preserved at tag
+# sinum-pre-grid-v1.1.
+GRID_CONVENTION = "cell-centered"
 
 
 def make_grid(cfg: Config) -> np.ndarray:
-    """Return uniform grid with n_grid points on [x_min, x_max]."""
-    return np.linspace(cfg.domain.x_min, cfg.domain.x_max, cfg.domain.n_grid)
+    """Return the n_grid cell centers x_min + (j + 1/2) dx with dx = L/n_grid.
+
+    The samples sit half a cell inside the physical walls; the walls
+    themselves are cfg.domain.x_min/x_max and are never inferred from the
+    samples.  On these nodes the orthonormal DCT-II modes are exactly the
+    Neumann cosine eigenfunctions with k_n = n pi / L.
+    """
+    from .cell_grid import cell_centers
+    return cell_centers(cfg.domain.x_min, cfg.domain.x_max, cfg.domain.n_grid)
 
 
 def true_u0(x: np.ndarray, cfg: Config) -> np.ndarray:
