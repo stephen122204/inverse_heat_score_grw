@@ -22,7 +22,10 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "src"))
 
-from figure_data import FIGURES, STUDY_KEY, compare_datasets, compute_all, load_dataset
+import json
+
+from figure_data import FIGURES, META_FILE, STUDY_KEY, compare_datasets, compute_all, load_dataset
+from invheat_grw.fields import GRID_CONVENTION
 from provenance import DEFAULT_MANIFEST, load_manifest, study_dir
 
 
@@ -39,6 +42,16 @@ def main() -> int:
     frozen_dir = study_dir(manifest, STUDY_KEY, REPO, verify_hashes=True)
     print(f"[provenance] {manifest_path}")
     print(f"[frozen]     {frozen_dir} (hashes verified)")
+
+    meta = json.loads((frozen_dir / META_FILE).read_text(encoding="utf-8"))
+    frozen_convention = meta.get("grid_convention", "endpoint")
+    if frozen_convention != GRID_CONVENTION:
+        print(f"\nFREEZE VERIFY: NOT APPLICABLE — the frozen dataset uses the "
+              f"{frozen_convention!r} grid convention and the current code uses "
+              f"{GRID_CONVENTION!r}.  This gate verifies same-convention "
+              f"recomputation only; run it at tag sinum-pre-grid-v1.1 for the "
+              f"archived endpoint-era method.")
+        return 0
 
     frozen = load_dataset(frozen_dir)
     print(f"Recomputing {len(FIGURES)} figure datasets with the current code ...",

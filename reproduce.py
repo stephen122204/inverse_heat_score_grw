@@ -31,6 +31,9 @@ from pathlib import Path
 from provenance import DEFAULT_MANIFEST, write_manifest
 
 REPO = Path(__file__).resolve().parent
+sys.path.insert(0, str(REPO / "src"))
+
+from invheat_grw.fields import GRID_CONVENTION
 PY = sys.executable
 BASE = "configs/gaussian_base.yaml"
 MIX = "configs/gaussian_mixture.yaml"
@@ -141,7 +144,8 @@ def main():
         else:
             stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
             manifest = REPO / "outputs" / f"run_manifest_{stamp}.json"
-        manifest = write_manifest(manifest, studies, commands, REPO)
+        manifest = write_manifest(manifest, studies, commands, REPO,
+                                  extra={"grid_convention": GRID_CONVENTION})
         print(f"[provenance] wrote {manifest}")
     else:
         manifest = Path(args.manifest) if args.manifest else DEFAULT_MANIFEST

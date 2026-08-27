@@ -142,6 +142,7 @@ def write_manifest(
     repo: Path = REPO,
     *,
     run_id: str | None = None,
+    extra: Mapping[str, Any] | None = None,
 ) -> Path:
     """Write an immutable manifest for directories created by one run."""
     root = repo.resolve()
@@ -176,5 +177,10 @@ def write_manifest(
         "commands": list(commands),
         "studies": entries,
     }
+    if extra:
+        for key, value in extra.items():
+            if key in payload:
+                raise ManifestError(f"extra manifest field {key!r} collides with a reserved field")
+            payload[key] = value
     output_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return output_path

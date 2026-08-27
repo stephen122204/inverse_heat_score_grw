@@ -4,6 +4,10 @@
   "created_utc": "2026-08-26T00:00:00+00:00",
   "code_commit": "eced091",
   "notes": "Explicit provenance for the archived outputs used by paper draft v5.1. Replaces latest-directory discovery.",
+  "archived_constants": {
+    "z_observed_norm_endpoint": 0.27367836171341176,
+    "notes": "Discrete L2 norm of the Test Z observed field on the archived endpoint grid (n_grid=400, dx=1/399).  Converts the archived absolute forward residual to the paper's relative E_fwd with no dependence on current grid or field code."
+  },
   "studies": {
     "representation_audit": {
       "path": "outputs/paper_run_20260627/representation_audit_20260627_094153",
