@@ -17,7 +17,8 @@ Metrics computed per method:
   - peak_location         : argmax location
   - peak_width_fwhm       : FWHM of candidate
   - total_variation       : sum |candidate[i+1] - candidate[i]|
-  - forward_consistency_l2: L2_h(forward_solve(candidate) - observed_final)
+  - forward_consistency_l2: relative L2_h forward residual, normalized by
+                            L2_h(observed_final)
   - A_fit, mu_fit, sigma_fit, fit_success, fit_rmse : Gaussian fit to candidate
   - sigma_moment, width_moment : second-moment width
   - mass_candidate, mass_true, mass_error, mass_rel_error : integral conservation
@@ -214,6 +215,8 @@ class MethodMetrics:
     # Values: "position_ratio_raw", "grid_ratio_raw", "grid_ratio_epsilon",
     #         "oracle", "none" (naive), or "" (unset / baseline)
     score_estimator_type: str = ""
+    # Explicit unnormalized companion; the primary field above is relative.
+    forward_consistency_l2_absolute: float = float("nan")
 
 
 # ---------------------------------------------------------------------------
@@ -260,7 +263,9 @@ def compute_metrics(
     # Forward consistency
     candidate_forward = forward_heat_solve_dct(candidate, x_grid, cfg)
     fwd_diff = candidate_forward - observed_final
-    fwd_l2 = float(np.sqrt(dx * np.sum(fwd_diff ** 2)))
+    fwd_l2_absolute = float(np.sqrt(dx * np.sum(fwd_diff ** 2)))
+    observed_l2 = float(np.sqrt(dx * np.sum(observed_final ** 2)))
+    fwd_l2 = fwd_l2_absolute / observed_l2 if observed_l2 > 0.0 else float("nan")
 
     # Mass conservation
     mass_cand = float(_trapz(candidate, x_grid))  # type: ignore[attr-defined]
@@ -315,6 +320,7 @@ def compute_metrics(
         n_denom_below_eps_total=int(sum(getattr(result, "n_denominator_below_epsilon", []))),
         n_clipped_total=int(sum(getattr(result, "n_clipped_scores", []))),
         score_estimator_type=getattr(result, "score_estimator_type", ""),
+        forward_consistency_l2_absolute=fwd_l2_absolute,
     )
 
 
