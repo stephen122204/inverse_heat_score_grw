@@ -1,26 +1,26 @@
 {
-  "code_commit": "f6b106fc5c06d6b12ab7a9203f69ff8e96681048",
+  "code_commit": "919d8eb12b87706f242b0f8bdc8165122d3cdcd0",
   "commands": [
     {
       "argv": [
         "/Library/Frameworks/Python.framework/Versions/3.11/bin/python3.11",
         "scripts/run_verification_dossier.py"
       ],
-      "elapsed_seconds": 2.249891124898568,
+      "elapsed_seconds": 2.183934582863003,
       "study": "verification_dossier"
     }
   ],
-  "created_utc": "2026-08-27T16:45:01.216412+00:00",
+  "created_utc": "2026-08-27T16:52:22.870487+00:00",
   "environment": {
     "platform": "macOS-26.3.1-arm64-arm-64bit",
     "python": "3.11.4"
   },
   "grid_convention": "cell-centered",
-  "run_id": "verification_dossier_20260827_164458",
+  "run_id": "verification_dossier_20260827_165220",
   "schema_version": 1,
   "studies": {
     "verification_dossier": {
-      "path": "outputs/verification_dossier_20260827_164458",
+      "path": "outputs/verification_dossier_20260827_165220",
       "required_files": [
         "commutation_constant.csv",
         "dossier.md",
@@ -37,7 +37,7 @@
       ],
       "sha256": {
         "commutation_constant.csv": "ecfc8599429939c2ee93311b2c46ccd4bdf44906d921bf4a46afa7889f3506ef",
-        "dossier.md": "2a7a5c6a72aca09c9bc96b16ff81aefaa3b2088c69ad5aea86204d5a71a8cf61",
+        "dossier.md": "d1937ef1e679d1f669a8d16a17deb72bdd3d926b2e347c3076fb0a7468d3feff",
         "kernel_verification.csv": "384560679c0eb4d3812883115c50bf19d49bff854fb70be4c2fd25e1c5e17e43",
         "mms_spatial.csv": "1843000235934d375b93d026a432f0bebfb75cec122b65d2e8a4cc707377bd08",
         "mms_temporal.csv": "a57e45658e920513b1a710ca4d696ead5e5bd99445717edcb6f52365a7adbc66",
@@ -47,7 +47,7 @@
         "particle_N_refinement.csv": "80298896f49dc7097a97264f229189aa7504167f2448bf4550c9649ded37761f",
         "particle_dt_refinement.csv": "3145dadb00e04d05fe444ec9cbb398ed6adab4e01487db960b24b8783c5ccfd8",
         "score_static.csv": "3a649d4688010de6127088bb2ec2aeae903ea2bacd163020f35a282d1ad9e8e2",
-        "summary.json": "0c1d8440a5d885765caa377b287ef5eac05933f41d0381a118c5a0439c7becaf"
+        "summary.json": "73311ffe3a3c37cbb6e7fc5bd963820cac5af580c1b33a30d445e4442d3bde91"
       }
     }
   }

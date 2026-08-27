@@ -1,6 +1,6 @@
 # Operator-verification dossier
 
-Code commit `f6b106fc5c06`, grid convention `cell-centered`, generated 2026-08-27T16:45:01.188837+00:00.
+Code commit `919d8eb12b87`, grid convention `cell-centered`, generated 2026-08-27T16:52:22.850039+00:00.
 
 **Verdicts: 22/22 PASS.**  Every reference value is analytic on the bounded Neumann domain.  No table compares one simulation against another, except the two self-convergence columns that isolate temporal order from spatial and kernel floors.
 
@@ -126,7 +126,7 @@ Grid refinement at fixed physical bandwidth leaves the error unchanged: the endp
 
 ## particle_M_coupled_control
 
-The paired control reinstates the endpoint-era coupling h = 8 dx: the error now falls with the grid exactly as the archived curve did, tracking the shrinking kernel-bias floor.  Together with the fixed-h table this proves the archived grid 'convergence' was the bandwidth coupling.
+The paired control reinstates the endpoint-era coupling rule (h proportional to dx; here h = 8 dx): the error falls with the grid while tracking the shrinking kernel-bias floor.  This reproduces the confounding mechanism behind the archived grid curves; it is not a literal replay of them, which no run on the corrected stack can be (the archived studies used h = 4 dx with the free-space kernel on an endpoint grid).  Together with the fixed-h table it proves that grid 'convergence' under a grid-coupled bandwidth measures the bandwidth, not the grid.
 
 ```
 bandwidth_rule   M          h  rel_error  predicted_bias_floor
