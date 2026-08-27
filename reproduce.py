@@ -75,6 +75,9 @@ STEPS = [
     ("vh_mixture_bandwidth", "vh_mixture_bandwidth_refinement_*",
      "variable-coefficient mixture bandwidth sweep  -> Figure 12",
      ["scripts/run_vh_mixture_bandwidth_refinement.py", "--n-particles", "10000", "--n-grid", "400"]),
+    ("figure_data", "paper_figure_data_*",
+     "frozen field arrays for the naive, loop, variable-field, and representation figures",
+     ["scripts/generate_figure_data.py"]),
 ]
 
 

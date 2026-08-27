@@ -6,8 +6,8 @@ Manuscript labels (draft): `fig:representation_failure`, `fig:noise`,
 
 All data come from real runs selected by an explicit manifest:
   fig_representation_failure_visual : Test B exact-score density-particle
-        (N=5000, bw4, E2~0.0069) vs gradient-glob (E2~0.175), reproduced inline
-        — the SAME runs behind Table 1.
+        (N=5000, bw4, E2~0.0069) vs gradient-glob (E2~0.175), loaded from the
+        manifest's frozen figure_data study — the SAME runs behind Table 1.
   fig_noise_robustness_bands        : reads the manifest-selected noise study
         arrays; mean line + shaded +/-1 std band for smoothed-log bw4, bw6, and
         optimally tuned Tikhonov.
@@ -21,25 +21,18 @@ from __future__ import annotations
 
 import argparse
 import sys
-import warnings
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent
 sys.path.insert(0, str(REPO / "src"))
 
 import numpy as np
-import copy
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from invheat_grw.config import load_config, Config
-from invheat_grw.fields import make_grid, true_u0, observed_final
-from invheat_grw.methods import (
-    run_oracle_score_deterministic,
-    run_density_particle_oracle_score_deterministic,
-)
+import figure_data as figdata
 from provenance import DEFAULT_MANIFEST, load_manifest, study_dir
 
 OUT = REPO / "figures"
@@ -47,17 +40,6 @@ OUT.mkdir(exist_ok=True)
 
 import figstyle
 figstyle.apply_paper_style()
-
-
-def patch(cfg: Config, **ov) -> Config:
-    cfg = copy.deepcopy(cfg)
-    for k, v in ov.items():
-        obj = cfg
-        parts = k.split(".")
-        for p in parts[:-1]:
-            obj = getattr(obj, p)
-        setattr(obj, parts[-1], v)
-    return cfg
 
 
 def save(fig, stem):
@@ -81,27 +63,15 @@ def selected_study(key: str) -> Path:
 # Gradient representation failure, shown visually (Test B)
 # ---------------------------------------------------------------------------
 def fig_representation_failure_visual():
-    base = load_config(str(REPO / "configs" / "gaussian_base.yaml"))
-    cfg = patch(base, **{"heat.T": 0.15, "initial_condition.sigma0": 0.08,
-                         "domain.n_grid": 400})
-    x = make_grid(cfg)
-    u0 = true_u0(x, cfg)
-    g = observed_final(x, cfg)
+    data = figdata.load_dataset(selected_study(figdata.STUDY_KEY))[
+        "fig_representation_failure"]
+    x, u0, g = data["x"], data["u0"], data["g"]
+    dp, gg = data["density"], data["glob"]
     dx = float(x[1] - x[0])
     u0n = float(np.sqrt(dx * np.sum(u0 ** 2)))
 
     def e2(c):
         return float(np.sqrt(dx * np.sum((c - u0) ** 2))) / u0n
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", RuntimeWarning)
-        # density-particle carrying u (the representation that matches)
-        dp = run_density_particle_oracle_score_deterministic(
-            g, x, cfg, 5000, recon_method="kde", bandwidth_factor=4.0).candidate
-        # gradient-glob carrying q = u_x (the representation that fails)
-        cfg_gg = patch(cfg, **{"grw.gradient_globs_per_jump": 80})
-        gg = run_oracle_score_deterministic(
-            g, x, cfg_gg, np.random.default_rng(42)).candidate
 
     e2_dp, e2_gg = e2(dp), e2(gg)
     print(f"  density E2={e2_dp:.4f}  gradient-glob E2={e2_gg:.4f}")
