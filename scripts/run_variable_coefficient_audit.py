@@ -281,14 +281,21 @@ def run_varcoeff_oracle(
     bandwidth_factor: float = 4.0,
     score_smooth_sigma: float | None = None,
     epsilon: float = EPSILON,
+    *,
+    x_min: float,
+    x_max: float,
 ) -> dict:
     """
     Reverse density-particle integration using the numerical oracle score.
 
     Particle update:  Δx = a(x) * ∂_x log u(x, t) * dt
+
+    x_min/x_max are the physical reflection walls from the configuration;
+    they are required keywords because inferring them from the first and
+    last grid coordinates is wrong on a cell-centered grid.
     """
     dx = x_grid[1] - x_grid[0]
-    x_min, x_max = float(x_grid[0]), float(x_grid[-1])
+    x_min, x_max = float(x_min), float(x_max)
     bw = bandwidth_factor * dx
 
     positions, total_mass = _quantile_init_particles(u_obs, x_grid, n_particles)
@@ -353,6 +360,9 @@ def run_varcoeff_estimated(
     recon_method: str = "kde",
     epsilon: float = EPSILON,
     score_smooth_sigma: float | None = None,
+    *,
+    x_min: float,
+    x_max: float,
 ) -> dict:
     """
     Reverse density-particle integration using estimated score.
@@ -360,9 +370,12 @@ def run_varcoeff_estimated(
     score_method choices: "smoothed_log", "fd_grid_ratio"
 
     Particle update:  Δx = a(x) * s_estimated(x,t) * dt
+
+    x_min/x_max are the physical reflection walls from the configuration
+    (required keywords; see run_varcoeff_oracle).
     """
     dx = x_grid[1] - x_grid[0]
-    x_min, x_max = float(x_grid[0]), float(x_grid[-1])
+    x_min, x_max = float(x_min), float(x_max)
     bw = bandwidth_factor * dx
 
     method_name = f"variable_estimated_{score_method}_bw{int(bandwidth_factor)}"
@@ -795,7 +808,8 @@ def main() -> None:
         print("[METHOD] variable_oracle_deterministic")
         r_oracle = run_varcoeff_oracle(
             u_obs, x_grid, snapshots, alpha0, beta, dt, n_steps,
-            n_particles=args.n_particles
+            n_particles=args.n_particles,
+            x_min=float(cfg.domain.x_min), x_max=float(cfg.domain.x_max)
         )
         case_results.append(r_oracle)
         print(f"  completed={r_oracle['completed']}  "
@@ -807,7 +821,8 @@ def main() -> None:
         r_sl4 = run_varcoeff_estimated(
             u_obs, x_grid, snapshots, alpha0, beta, dt, n_steps,
             score_method="smoothed_log", bandwidth_factor=4.0,
-            n_particles=args.n_particles
+            n_particles=args.n_particles,
+            x_min=float(cfg.domain.x_min), x_max=float(cfg.domain.x_max)
         )
         case_results.append(r_sl4)
         print(f"  completed={r_sl4['completed']}  t={r_sl4['runtime_seconds']:.1f}s")
@@ -817,7 +832,8 @@ def main() -> None:
         r_sl6 = run_varcoeff_estimated(
             u_obs, x_grid, snapshots, alpha0, beta, dt, n_steps,
             score_method="smoothed_log", bandwidth_factor=6.0,
-            n_particles=args.n_particles
+            n_particles=args.n_particles,
+            x_min=float(cfg.domain.x_min), x_max=float(cfg.domain.x_max)
         )
         case_results.append(r_sl6)
         print(f"  completed={r_sl6['completed']}  t={r_sl6['runtime_seconds']:.1f}s")
@@ -827,7 +843,8 @@ def main() -> None:
         r_fd4 = run_varcoeff_estimated(
             u_obs, x_grid, snapshots, alpha0, beta, dt, n_steps,
             score_method="fd_grid_ratio", bandwidth_factor=4.0,
-            n_particles=args.n_particles
+            n_particles=args.n_particles,
+            x_min=float(cfg.domain.x_min), x_max=float(cfg.domain.x_max)
         )
         case_results.append(r_fd4)
         print(f"  completed={r_fd4['completed']}  t={r_fd4['runtime_seconds']:.1f}s")

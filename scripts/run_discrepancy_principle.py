@@ -120,7 +120,8 @@ def main():
     def tikhonov(g_noisy, lam):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
-            return tikhonov_inverse(g_noisy, x, cfg.heat.alpha, cfg.heat.T, lam).candidate
+            return tikhonov_inverse(g_noisy, x, cfg.heat.alpha, cfg.heat.T, lam,
+                                    length=float(cfg.domain.x_max - cfg.domain.x_min)).candidate
 
     # delta(eta): nominal expected relative perturbation norm (same for all seeds)
     def delta_of(eta):

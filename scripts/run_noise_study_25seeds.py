@@ -116,7 +116,8 @@ def main() -> None:
         for lam in TIKHONOV_LAMBDAS:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", RuntimeWarning)
-                tr = tikhonov_inverse(u_obs, x, cfg.heat.alpha, cfg.heat.T, lam)
+                tr = tikhonov_inverse(u_obs, x, cfg.heat.alpha, cfg.heat.T, lam,
+                                      length=float(cfg.domain.x_max - cfg.domain.x_min))
             if np.all(np.isfinite(tr.candidate)):
                 r = rel_l2(tr.candidate)
                 if r < best:

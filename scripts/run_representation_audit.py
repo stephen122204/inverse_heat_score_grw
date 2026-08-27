@@ -307,7 +307,8 @@ def run_baseline_cells(
     for lam in TIKHONOV_LAMBDAS:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
-            tr = tikhonov_inverse(u_obs, x_grid, alpha, T_val, lam)
+            tr = tikhonov_inverse(u_obs, x_grid, alpha, T_val, lam,
+                                  length=float(cfg_res.domain.x_max - cfg_res.domain.x_min))
         if np.all(np.isfinite(tr.candidate)):
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", RuntimeWarning)
@@ -350,7 +351,8 @@ def run_baseline_cells(
     for nd in NOISE_DELTA_VALUES:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
-            sr = spectral_cutoff_inverse(u_obs, x_grid, alpha, T_val, noise_delta=nd)
+            sr = spectral_cutoff_inverse(u_obs, x_grid, alpha, T_val, noise_delta=nd,
+                                         length=float(cfg_res.domain.x_max - cfg_res.domain.x_min))
         if np.all(np.isfinite(sr.candidate)):
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", RuntimeWarning)
@@ -621,7 +623,8 @@ def plot_field_comparison(
     for lam in TIKHONOV_LAMBDAS:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
-            tr = tikhonov_inverse(u_obs, x_grid, alpha, T_val, lam)
+            tr = tikhonov_inverse(u_obs, x_grid, alpha, T_val, lam,
+                                  length=float(cfg_res.domain.x_max - cfg_res.domain.x_min))
         if np.all(np.isfinite(tr.candidate)):
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", RuntimeWarning)

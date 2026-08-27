@@ -225,7 +225,8 @@ def run_case(
     print("[METHOD] oracle")
     r_oracle = vc.run_varcoeff_oracle(
         u_obs, x_grid, snapshots, alpha0, beta, dt, n_steps,
-        n_particles=n_particles
+        n_particles=n_particles,
+        x_min=float(cfg.domain.x_min), x_max=float(cfg.domain.x_max)
     )
     oracle_rel_l2 = _rel_l2(r_oracle["candidate"], u0_true, x_grid)
     oracle_candidate = r_oracle["candidate"].copy()
@@ -253,6 +254,7 @@ def run_case(
             bandwidth_factor=float(bw),
             n_particles=n_particles,
             epsilon=EPSILON,
+            x_min=float(cfg.domain.x_min), x_max=float(cfg.domain.x_max),
         )
         rel_l2 = _rel_l2(r["candidate"], u0_true, x_grid)
         bw_rel_l2.append(rel_l2)
