@@ -7,28 +7,37 @@
   "studies": {
     "representation_audit": {
       "path": "outputs/paper_run_20260627/representation_audit_20260627_094153",
-      "required_files": ["representation_audit_metrics.csv"],
+      "required_files": [
+        "representation_audit_metrics.csv"
+      ],
       "sha256": {
         "representation_audit_metrics.csv": "d60aa40f1992567cfeeaabaf7b51bea637dfe1bf8fd60c17c9bb783113a6bb73"
       }
     },
     "score_estimation_audit": {
       "path": "outputs/paper_run_20260627/score_estimation_audit_20260627_084924",
-      "required_files": ["score_estimation_audit_metrics.csv"],
+      "required_files": [
+        "score_estimation_audit_metrics.csv"
+      ],
       "sha256": {
         "score_estimation_audit_metrics.csv": "d841ea70d9d6847338556c2f6d3013e6064f1cea4abd780a95542dc37114bbd0"
       }
     },
     "validation_stage": {
       "path": "outputs/paper_run_20260627/validation_stage_20260627_082621",
-      "required_files": ["validation_metrics.csv"],
+      "required_files": [
+        "validation_metrics.csv"
+      ],
       "sha256": {
         "validation_metrics.csv": "7060048e08dede9cdf555618ed2d0fe58df2951c5e301467ee3ab7c3ebe361f5"
       }
     },
     "noise_study": {
       "path": "outputs/noise_study_25seeds_20260629_153744",
-      "required_files": ["noise_study_arrays.npz", "noise_study_summary.csv"],
+      "required_files": [
+        "noise_study_arrays.npz",
+        "noise_study_summary.csv"
+      ],
       "sha256": {
         "noise_study_arrays.npz": "9cbd128acd247bcbbb413974cadadd126d762f405ec1d5c5044e5bc26b8844c9",
         "noise_study_summary.csv": "de4a28f110c9c0fbe66801181f90bcf5c6abea9ae51f0f125d36f6e52df2b4e3"
@@ -36,7 +45,10 @@
     },
     "discrepancy_sweep": {
       "path": "outputs/discrepancy_principle_20260629_165325",
-      "required_files": ["discrepancy_bw_curve.csv", "discrepancy_raw.csv"],
+      "required_files": [
+        "discrepancy_bw_curve.csv",
+        "discrepancy_raw.csv"
+      ],
       "sha256": {
         "discrepancy_bw_curve.csv": "03f4add89dbf27cdb139e2e559282f6b358c09f0270a79728aa41c40242f834b",
         "discrepancy_raw.csv": "76d6b696209c9fc30782ca24469d6e551395887b84fe26526650ca26e3e710b0"
@@ -44,7 +56,10 @@
     },
     "discrepancy_final": {
       "path": "outputs/discrepancy_principle_final_20260629_165900",
-      "required_files": ["discrepancy_arrays.npz", "discrepancy_summary.csv"],
+      "required_files": [
+        "discrepancy_arrays.npz",
+        "discrepancy_summary.csv"
+      ],
       "sha256": {
         "discrepancy_arrays.npz": "1b154f93793ec0ef4e881fd088ce6c943fccc06eb6d9a3db637ed8364b81f411",
         "discrepancy_summary.csv": "3912d0391482d94897ea847b05807c095b84e0149de6bec209036d59f1e62e74"
@@ -52,7 +67,10 @@
     },
     "nonsmooth_case": {
       "path": "outputs/nonsmooth_case_20260629_152746",
-      "required_files": ["nonsmooth_arrays.npz", "nonsmooth_metrics.csv"],
+      "required_files": [
+        "nonsmooth_arrays.npz",
+        "nonsmooth_metrics.csv"
+      ],
       "sha256": {
         "nonsmooth_arrays.npz": "e28751615b8dc67307c5f6194ad980956a7a297e69493a593bca51835a45b619",
         "nonsmooth_metrics.csv": "6829e1bbd16e9080415b77bc4c3d7522f6af01d7e876f814732b2a0fca30955a"
@@ -60,23 +78,40 @@
     },
     "variable_coefficient_audit": {
       "path": "outputs/paper_run_20260627/variable_coefficient_audit_20260627_082333",
-      "required_files": ["variable_coeff_metrics.csv"],
+      "required_files": [
+        "variable_coeff_metrics.csv"
+      ],
       "sha256": {
         "variable_coeff_metrics.csv": "e0f478e2b202a2c765af3b8b38271d205cd1f66c1b10a8e5ab0fe7041ebc8d06"
       }
     },
     "vh_mixture_bandwidth": {
       "path": "outputs/paper_run_20260627/vh_mixture_bandwidth_refinement_20260627_084940",
-      "required_files": ["vh_mixture_bandwidth_metrics.csv"],
+      "required_files": [
+        "vh_mixture_bandwidth_metrics.csv"
+      ],
       "sha256": {
         "vh_mixture_bandwidth_metrics.csv": "1dbfb222d2271b58487c935e28334db33d2360fd06f5e3d802a48c49d9c4997f"
       }
     },
     "dt_sweep_glob": {
       "path": "outputs/dt_sweep_glob_20260711_002100",
-      "required_files": ["dt_sweep_glob.csv"],
+      "required_files": [
+        "dt_sweep_glob.csv"
+      ],
       "sha256": {
         "dt_sweep_glob.csv": "ddd4aa8fb124a6f7e3e25e4d67a72ed8eb473d23f90fb7ae72f5054f6547f2a8"
+      }
+    },
+    "figure_data": {
+      "path": "outputs/paper_figure_data_20260827_001314",
+      "required_files": [
+        "figure_data.npz",
+        "figure_data_meta.json"
+      ],
+      "sha256": {
+        "figure_data.npz": "6d672232684c0dbdefc479f3891592c6627797e70e934fd62a00ba87ae9ffc51",
+        "figure_data_meta.json": "40884bdd5f85097c4539dbf58e6fe283b77de0c1397d2a678ad0394791c9155b"
       }
     }
   }
