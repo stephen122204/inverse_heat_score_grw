@@ -32,6 +32,7 @@ from __future__ import annotations
 import copy
 import importlib.util
 import json
+import math
 import sys
 import time
 from datetime import datetime, timezone
@@ -61,7 +62,7 @@ from invheat_grw.neumann_kernels import (
     neumann_kde_density_derivative,
     neumann_kde_score,
 )
-from provenance import git_commit, write_manifest
+from provenance import git_commit, load_manifest, study_dir, write_manifest
 
 _spec = importlib.util.spec_from_file_location(
     "vc_audit", str(REPO / "scripts" / "run_variable_coefficient_audit.py"))
@@ -132,6 +133,23 @@ def fmt_table(df: pd.DataFrame) -> str:
                         float_format=lambda v: f"{v:.4e}")
 
 
+def records_exact(df: pd.DataFrame) -> list[dict]:
+    """DataFrame rows as native-Python records: json round-trips every float
+    at full machine precision (pandas' JSON writer rounds 1e-16-scale
+    residuals to zero)."""
+    out = []
+    for row in df.to_dict(orient="records"):
+        rec = {}
+        for k, v in row.items():
+            if hasattr(v, "item"):
+                v = v.item()
+            if isinstance(v, float) and math.isnan(v):
+                v = None
+            rec[k] = v
+        out.append(rec)
+    return out
+
+
 def main() -> None:
     t_start = time.perf_counter()
     ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
@@ -200,9 +218,12 @@ def main() -> None:
     sc = tables["score_static"]
     verdicts["score_finite"] = bool(
         np.isfinite(sc[["score_L2", "score_Linf"]].to_numpy()).all())
-    linf_h002 = float(sc[(sc.h == 0.02) & (sc.n_particles == 16000)].score_Linf.iloc[0])
-    linf_h001 = float(sc[(sc.h == 0.01) & (sc.n_particles == 16000)].score_Linf.iloc[0])
-    verdicts["score_bias_shrinks_with_h"] = bool(linf_h001 < linf_h002)
+    # The bias term is O(h^2) to leading order; enforce the observed rate.
+    at_n = sc[sc.n_particles == 16000].set_index("h")
+    order_linf = float(np.log2(at_n.loc[0.02].score_Linf / at_n.loc[0.01].score_Linf))
+    order_l2 = float(np.log2(at_n.loc[0.02].score_L2 / at_n.loc[0.01].score_L2))
+    verdicts["score_h_order_Linf_in_[1.8,2.2]"] = bool(1.8 <= order_linf <= 2.2)
+    verdicts["score_h_order_L2_in_[1.8,2.2]"] = bool(1.8 <= order_l2 <= 2.2)
 
     # ------------------------------------------------------------------
     # 3. Constant-coefficient modal commutation (public APIs)
@@ -332,24 +353,49 @@ def main() -> None:
                         .error_over_floor.iloc[0])
     verdicts["particle_N_floor_ratio_in_[0.7,1.5]"] = bool(0.7 <= final_ratio <= 1.5)
     verdicts["particle_mass<=1e-12"] = bool(np.max(np.abs(nh.mass_error)) <= 1e-12)
+    for h_val in (0.02, 0.01):
+        errs_n = nh[nh.h == h_val].rel_error
+        spread_n = float(errs_n.max() / errs_n.min() - 1.0)
+        verdicts[f"particle_N_spread_h={h_val}<=1e-3"] = bool(spread_n <= 1e-3)
 
+    # 5b. time step at fixed h, N, M.  Consecutive Richardson differences
+    # give the clean Euler order; the truth error's ratio to the analytic
+    # kernel-bias floor must approach one as dt -> 0, proving the residual
+    # floor discrepancy is temporal.
     h_dt, n_dt, m_dt = 0.02, 4000, 400
-    _, _, recon_ref, x_p = run_exact_score_particles(m_dt, n_dt, 2.5e-4, h_dt)
+    floor_dt = predicted_kernel_bias(h_dt)
+    dts = (8e-3, 4e-3, 2e-3, 1e-3, 5e-4, 2.5e-4, 1.25e-4)
     dxp = cell_spacing(X_MIN, X_MAX, m_dt)
-    u0_norm = midpoint_norm(manufactured_u(x_p, 0.0), dxp)
-    rows, errs_self = [], []
-    for dt_p in (8e-3, 4e-3, 2e-3, 1e-3):
+    u0_norm = midpoint_norm(manufactured_u(cell_centers(X_MIN, X_MAX, m_dt), 0.0),
+                            dxp)
+    recons, rels = [], []
+    for dt_p in dts:
         rel, _, recon, _ = run_exact_score_particles(m_dt, n_dt, dt_p, h_dt)
-        e_self = midpoint_norm(recon - recon_ref, dxp) / u0_norm
-        errs_self.append(e_self)
-        rows.append({"h": h_dt, "n_particles": n_dt, "M": m_dt, "dt": dt_p,
-                     "rel_error_vs_truth": rel, "rel_error_vs_dt_ref": e_self,
-                     "order_self": np.nan if len(errs_self) < 2
-                     else orders_of(errs_self[-2:])[0]})
+        recons.append(recon)
+        rels.append(rel)
+    rich = [midpoint_norm(recons[i] - recons[i + 1], dxp) / u0_norm
+            for i in range(len(dts) - 1)]
+    rich_orders = orders_of(rich)
+    rows = []
+    for i, dt_p in enumerate(dts):
+        rows.append({
+            "h": h_dt, "n_particles": n_dt, "M": m_dt, "dt": dt_p,
+            "rel_error_vs_truth": rels[i],
+            "error_over_floor": rels[i] / floor_dt,
+            "richardson_diff": rich[i] if i < len(rich) else np.nan,
+            "richardson_order": rich_orders[i - 1] if 1 <= i <= len(rich_orders)
+            else np.nan,
+        })
     tables["particle_dt_refinement"] = pd.DataFrame(rows)
-    verdicts["particle_dt_order_in_[0.8,1.4]"] = bool(
-        all(0.8 <= o <= 1.4 for o in orders_of(errs_self)))
+    verdicts["particle_dt_richardson_order_in_[0.9,1.1]"] = bool(
+        all(0.9 <= o <= 1.1 for o in rich_orders))
+    verdicts["particle_floor_ratio_at_finest_dt<=1.01"] = bool(
+        rels[-1] / floor_dt <= 1.01)
 
+    # 5c. grid refinement: fixed physical bandwidth beside the endpoint-era
+    # coupled control h = 8 dx.  The pair proves the archived grid curve
+    # moved because the bandwidth was grid-coupled, not because the grid
+    # resolved anything new.
     rows = []
     for m_g in (100, 200, 400, 800):
         rel, mass_rel, _, _ = run_exact_score_particles(m_g, 4000, 2e-3, 0.02)
@@ -359,6 +405,18 @@ def main() -> None:
     spread = tables["particle_M_refinement"].rel_error
     verdicts["particle_M_grid_independent(spread<=5%)"] = bool(
         (spread.max() - spread.min()) / spread.min() <= 0.05)
+
+    rows = []
+    for m_g in (100, 200, 400, 800):
+        h_c = 8.0 * LENGTH / m_g
+        rel, _, _, _ = run_exact_score_particles(m_g, 4000, 2e-3, h_c)
+        rows.append({"bandwidth_rule": "h=8dx", "M": m_g, "h": h_c,
+                     "rel_error": rel,
+                     "predicted_bias_floor": predicted_kernel_bias(h_c)})
+    tables["particle_M_coupled_control"] = pd.DataFrame(rows)
+    ctrl = tables["particle_M_coupled_control"].rel_error
+    verdicts["coupled_control_error_falls(M100/M800>=3)"] = bool(
+        float(ctrl.iloc[0] / ctrl.iloc[-1]) >= 3.0)
 
     # ------------------------------------------------------------------
     # Write outputs, dossier, and manifest
@@ -376,8 +434,7 @@ def main() -> None:
             "variable": "u = exp(-t)(1 + 0.5 cos(pi x)), beta = 0.9, forced CN",
         },
         "verdicts": verdicts,
-        "tables": {k: json.loads(v.to_json(orient="records"))
-                   for k, v in tables.items()},
+        "tables": {k: records_exact(v) for k, v in tables.items()},
         "runtime_seconds": time.perf_counter() - t_start,
     }
     (out / "summary.json").write_text(json.dumps(summary, indent=2) + "\n",
@@ -392,7 +449,7 @@ def main() -> None:
         "score_static": "Neumann KDE score of quantile particles against the "
             "analytic score of the manufactured density (epsilon = 0; the "
             "density is bounded below by 0.5, so no floor is involved).  The "
-            "error is bandwidth bias; halving h shrinks it.",
+            "error is bandwidth bias at the enforced O(h^2) rate.",
         "commutation_constant": "The forward multiplier, Tikhonov filter, and "
             "spectral cutoff act exactly on discrete cosine modes through the "
             "public APIs.  The cutoff column is the relative residual "
@@ -412,12 +469,19 @@ def main() -> None:
             "physical bandwidth: the particle-count error converges to the "
             "analytically predicted kernel-bias floor and the reconstruction "
             "mass is exact by construction.",
-        "particle_dt_refinement": "First-order (explicit Euler) "
-            "self-convergence in the time step at fixed h, N, M.  The "
-            "vs-truth column floors at the kernel bias.",
+        "particle_dt_refinement": "Time-step refinement at fixed h, N, M.  "
+            "Consecutive Richardson differences give the clean explicit-Euler "
+            "first order, and the truth error's ratio to the analytic "
+            "kernel-bias floor approaches one as dt shrinks — the residual "
+            "floor discrepancy is temporal, nothing else.",
         "particle_M_refinement": "Grid refinement at fixed physical bandwidth "
             "leaves the error unchanged: the endpoint-era h = c * dx coupling "
             "that confounded the archived grid study is gone.",
+        "particle_M_coupled_control": "The paired control reinstates the "
+            "endpoint-era coupling h = 8 dx: the error now falls with the "
+            "grid exactly as the archived curve did, tracking the shrinking "
+            "kernel-bias floor.  Together with the fixed-h table this proves "
+            "the archived grid 'convergence' was the bandwidth coupling.",
     }
     lines = [
         "# Operator-verification dossier",
@@ -449,6 +513,9 @@ def main() -> None:
         run_id=f"verification_dossier_{ts}",
         extra={"grid_convention": GRID_CONVENTION},
     )
+    # Validate the freshly written manifest before reporting success.
+    _, fresh = load_manifest(manifest_path)
+    study_dir(fresh, "verification_dossier", REPO, verify_hashes=True)
 
     print(f"\nVerdicts: {passed}/{len(verdicts)} PASS")
     for k, v in verdicts.items():
