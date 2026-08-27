@@ -57,6 +57,31 @@ class VariableOperatorStructureTests(unittest.TestCase):
         self.assertAlmostEqual(float(z @ (L @ y)), float((L @ z) @ y), places=8)
 
 
+class NonfiniteScoreControlFlowTests(unittest.TestCase):
+    def test_estimated_path_fails_loudly_on_nonfinite_scores(self):
+        """A poisoned score estimator must abort the run with a failure
+        record, never be silently zeroed (the endpoint-era fallback)."""
+        m = 32
+        x = cell_centers(0.0, 1.0, m)
+        u_obs = 1.0 + 0.5 * np.cos(np.pi * x)
+        snapshots = {k: u_obs.copy() for k in range(3)}
+
+        def poisoned(x_eval, u_grid, x_grid, smooth_sigma, epsilon=0.0):
+            return np.full(np.shape(x_eval), np.nan), {}
+
+        original = vc.smoothed_log_score
+        vc.smoothed_log_score = poisoned
+        self.addCleanup(setattr, vc, "smoothed_log_score", original)
+
+        r = vc.run_varcoeff_estimated(
+            u_obs, x, snapshots, 0.01, 0.5, 0.001, 2,
+            score_method="smoothed_log", bandwidth_factor=4.0, n_particles=64,
+            x_min=0.0, x_max=1.0)
+        self.assertFalse(r["completed"])
+        self.assertEqual(r["failure_step"], 0)
+        self.assertIn("NaN/Inf in estimated score", r["failure_msg"])
+
+
 class ForcedManufacturedSolutionTests(unittest.TestCase):
     """u(x,t) = e^{-t} (1 + 0.5 cos(pi x)) satisfies Neumann walls exactly;
     the forcing f = u_t - d/dx(a du/dx) is analytic."""
