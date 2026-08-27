@@ -2,7 +2,7 @@
 make_discrepancy_figure.py — the discrepancy-principle comparison figure
 (manuscript label, draft: `fig:discrepancy`).
 
-Reads the latest outputs/discrepancy_principle_* and builds a two-panel figure:
+Reads the manifest-selected discrepancy result and builds a two-panel figure:
  (a) realistic reconstruction overlay at eta=0.005 for the representative
      realization: true u0, discrepancy-tuned particle, discrepancy-tuned
      Tikhonov (E2 in legend).
@@ -17,7 +17,7 @@ No editorializing title; the caption carries the message. Writes to figures/
 
 from __future__ import annotations
 
-import glob
+import argparse
 from pathlib import Path
 
 import numpy as np
@@ -30,17 +30,17 @@ PAPER_FIGS = REPO.parent / "paper_draft" / "figures"
 
 import figstyle
 figstyle.apply_paper_style()
-
-
-def latest(pattern):
-    dirs = [Path(h) for h in glob.glob(str(REPO / "outputs" / pattern)) if Path(h).is_dir()]
-    return max(dirs, key=lambda p: p.name) if dirs else None
+from provenance import DEFAULT_MANIFEST, load_manifest, study_dir
 
 
 def main():
-    d = latest("discrepancy_principle_*")
-    if d is None:
-        print("no discrepancy_principle_* dir"); return
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--manifest", default=str(DEFAULT_MANIFEST),
+                    help="explicit run manifest; defaults to the archived paper-v5.1 manifest")
+    args = ap.parse_args()
+    manifest_path, manifest = load_manifest(args.manifest)
+    print(f"[provenance] {manifest_path}")
+    d = study_dir(manifest, "discrepancy_final", REPO)
     a = np.load(d / "discrepancy_arrays.npz")
     x, u0 = a["x"], a["u0"]
     eta = float(a["eta_fig"])
