@@ -54,7 +54,7 @@ The headline scientific conclusions must be supported by C1/C2 or by the de-crim
 ### Preregistered study matrix
 
 - **Clean physical-bandwidth curves:** C1, C2, B, H, Z, and all four de-crimed variable cases.
-- **Epsilon sensitivity at `h = 0.014`:** C1 and Z. C1 is the exact bounded-domain primary; Z is the near-zero-tail stress case.
+- **Epsilon sensitivity at the per-case anchor bandwidth (`h = 0.028` for C1, `h = 0.014` for Z):** C1 and Z. C1 is the exact bounded-domain primary; Z is the near-zero-tail stress case.
 - **Paired 25-seed noise campaign:** C1 and B. This supplies one exact bounded-domain primary and a direct bridge to the archived noise study. No other case is silently included in the headline noise aggregate.
 - **Continuous-lambda oracle curves:** every clean case in the bandwidth study.
 - **Noisy-lambda selections:** for every nonzero-noise `(case, eta, seed, arm)` block, three preregistered noisy-lambda selections: **oracle continuous lambda** as the attainable-performance diagnostic (truth access; never presented as data-driven), **residual-selected at `tau = 1.2`** (headline), and **residual-selected at `tau = 1.0`** (labeled sensitivity).
@@ -75,7 +75,7 @@ Unless a named refinement study varies one of them, use:
 
 The change from the initially proposed `N = 10000` is deliberate and made before any Phase 2C run. The pinned Phase 2B dossier found the fixed-bandwidth error flat from `N = 500` through `N = 8000`, with relative spread about `7e-6`; carrying `N = 10000` through every bandwidth and noise replicate would add large score-evaluation cost without resolving a demonstrated error source.
 
-Particle adequacy is nevertheless checked with the canonical self-consistent estimated score in two preregistered refinements — **C1**, the exact bounded-domain primary, and **H**, the mixture-saddle stress case that has historically been the score-estimation bottleneck — each at fixed `M`, `dt`, `h = 0.014`, and `epsilon_rel = 1e-8`, using
+Particle adequacy is nevertheless checked with the canonical self-consistent estimated score in two preregistered refinements — **C1**, the exact bounded-domain primary, and **H**, the mixture-saddle stress case that has historically been the score-estimation bottleneck — each at fixed `M`, `dt`, `epsilon_rel = 1e-8`, and the per-case anchor bandwidth (`h = 0.028` for C1, `h = 0.014` for H), using
 
 `N in {1000, 2000, 4000, 8000, 10000}`.
 
@@ -102,7 +102,7 @@ Two bandwidth labels are permitted:
 
 The oracle-grid label must never be shortened to “optimal bandwidth.” If a minimum or residual match occurs at an endpoint, mark it as **boundary-censored**. The base grid is not silently extended. A separately manifested exploratory extension may diagnose the censoring, but it cannot replace the preregistered headline result.
 
-For noiseless performance summaries, use the preregistered reference `h = 0.014` and show the complete bandwidth curve. A zero-noise residual target is degenerate, so no “data-selected” bandwidth is reported at `eta = 0`.
+For noiseless performance summaries, use the per-case reference bandwidth (`h = 0.028` for the `T = 1` cases C1 and C2, `h = 0.014` otherwise) and show the complete bandwidth curve. A zero-noise residual target is degenerate, so no “data-selected” bandwidth is reported at `eta = 0`.
 
 ## 4. Score floor and positivity arms
 
@@ -363,3 +363,30 @@ No manuscript accuracy, novelty, or comparison prose is finalized until the pinn
 - [x] Status changed from PROPOSED to FROZEN in a dedicated commit.
 
 Scientific experiment runs begin only after all boxes are checked and the status line is FROZEN.
+
+## Amendment 1 (2026-08-31): per-case anchor bandwidths for fixed-h studies
+
+Committed before any campaign row was executed; no reruns are triggered.
+
+The linearization of the regularized dynamics about the constant state is
+diagonal in the Neumann cosine basis with growth rates
+`alpha k^2 exp(-k^2 h^2 / 2)`, whose maximum over modes is
+`2 alpha T / (e h^2)` over the horizon, so a perturbation entering at relative
+floor `delta` remains subdominant only for bandwidths above
+`h_* = sqrt(2 alpha T / (e ln(1/delta)))`. For the `T = 1` primaries C1 and C2
+at the production floor `delta = 1e-8` this gives `h_*` of about `0.020`, so
+the original fixed anchor `h = 0.014` lies inside the unstable window, and the
+`N`-adequacy criterion there would measure amplified initialization noise
+rather than particle adequacy, failing for a reason unrelated to its purpose.
+Exploratory pre-campaign diagnostics, archived outside the campaign, confirmed
+the predicted transition.
+
+Change: fixed-bandwidth designs anchor per case at the first preregistered
+grid point strictly above the analytic window, chosen from the stability scale
+and not from any observed error value. The anchor is `h = 0.028` for C1 and,
+where a summary reference is needed, for C2; `h = 0.014` remains the anchor
+for H and Z, whose horizons put the window below it.
+
+Affected studies: the epsilon-sensitivity C1 rows and the `N`-adequacy C1 rows
+move to `h = 0.028`; the Section 3 noiseless summary reference becomes
+per-case. Row counts and every other study are unchanged.
