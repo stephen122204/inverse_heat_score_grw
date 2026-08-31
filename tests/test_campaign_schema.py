@@ -34,6 +34,19 @@ class ScheduleLiteralsTests(unittest.TestCase):
         self.assertEqual(schema.CLOSURE_H_BRIDGE, (0.020, 0.014, 0.010, 0.007))
         self.assertEqual(schema.CLOSURE_REFINEMENTS,
                          ((200, 2e-3), (400, 1e-3), (800, 5e-4)))
+        # Amendment 1: per-case anchors for fixed-h studies.
+        self.assertEqual(schema.ANCHOR_H, {"C1": 0.028, "C2": 0.028})
+        self.assertEqual(schema.anchor_h("C1"), 0.028)
+        self.assertEqual(schema.anchor_h("Z"), schema.HEADLINE_H)
+        self.assertEqual(schema.anchor_h("H"), schema.HEADLINE_H)
+
+    def test_amendment_one_rows_carry_the_per_case_anchor(self):
+        for row in schema.rows_epsilon_sensitivity():
+            self.assertEqual(row["h"], schema.anchor_h(row["case"]))
+        for row in schema.rows_adequacy():
+            self.assertEqual(row["h"], schema.anchor_h(row["case"]))
+        anchors = {row["case"]: row["h"] for row in schema.rows_adequacy()}
+        self.assertEqual(anchors, {"C1": 0.028, "H": 0.014})
 
     def test_case_registry_roles_and_anchors(self):
         roles = {name: c["role"] for name, c in schema.CASES.items()}

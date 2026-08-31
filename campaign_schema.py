@@ -31,6 +31,18 @@ PROTOCOL_FILE = REPO / "PHASE2C_PROTOCOL.md"
 BANDWIDTHS = (0.005, 0.007, 0.010, 0.014, 0.020, 0.028, 0.040)
 HEADLINE_H = 0.014
 
+# Amendment 1 (2026-08-31): fixed-h studies anchor per case at the first
+# preregistered bandwidth strictly above the linear stability window
+# h_* = sqrt(2 alpha T / (e ln(1/delta))) at the production floor
+# delta = HEADLINE_EPS_REL; for the T = 1 cases that window is ~0.020.
+ANCHOR_H = {"C1": 0.028, "C2": 0.028}
+
+
+def anchor_h(case: str) -> float:
+    """Per-case anchor bandwidth for fixed-h studies (Amendment 1)."""
+    return ANCHOR_H.get(case, HEADLINE_H)
+
+
 EPS_REL_GRID = (1e-10, 1e-8, 1e-6, 1e-4)
 HEADLINE_EPS_REL = 1e-8
 EPS_FLOOR_FACTOR = 100.0          # epsilon_abs >= 100 * B0(K)
@@ -157,6 +169,9 @@ def document_binding_needles() -> tuple[str, ...]:
         "Rusanov",
         "SSPRK3",
         "monotonized-central",
+        f"(`h = {anchor_h('C1'):.3f}` for C1, `h = {anchor_h('Z'):.3f}` for Z)",
+        f"(`h = {anchor_h('C1'):.3f}` for C1, `h = {anchor_h('H'):.3f}` for H)",
+        f"`h = {anchor_h('C1'):.3f}` for the `T = 1` cases C1 and C2",
     ) + tuple(f"**Arm {arm}" for arm in ARMS)
 
 
@@ -171,13 +186,13 @@ def rows_bandwidth_clean() -> list[dict]:
 
 
 def rows_epsilon_sensitivity() -> list[dict]:
-    return [{"study": "epsilon_sensitivity", "case": c, "h": HEADLINE_H,
+    return [{"study": "epsilon_sensitivity", "case": c, "h": anchor_h(c),
              "eps_rel": e, "eta": 0.0}
             for c in EPSILON_CASES for e in EPS_REL_GRID]
 
 
 def rows_adequacy() -> list[dict]:
-    return [{"study": "adequacy_N", "case": c, "h": HEADLINE_H,
+    return [{"study": "adequacy_N", "case": c, "h": anchor_h(c),
              "eps_rel": HEADLINE_EPS_REL, "N": n}
             for c in ADEQUACY_CASES for n in ADEQUACY_N]
 
