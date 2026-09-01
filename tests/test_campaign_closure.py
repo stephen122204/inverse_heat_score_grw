@@ -174,6 +174,44 @@ class TestReferenceSolver(unittest.TestCase):
         self.assertIn("positivity", result.failure_message)
 
 
+class TestSnapshots(unittest.TestCase):
+    def test_reference_snapshot_equals_a_run_stopped_at_that_time(self):
+        m = 120
+        x, u0, g = g1_fields(m)
+        dx = cell_spacing(0.0, 1.0, m)
+        q0 = -math.pi * DECAY * np.sin(np.pi * x)
+        kwargs = dict(kind="regularized", closure="frozen_left",
+                      anchor_value=float(g[0]),
+                      total_mass=float(dx * np.sum(g)), x_min=0.0, x_max=1.0,
+                      dt=1e-3, alpha=ALPHA, bandwidth=0.014, eps_rel=1e-8)
+        full = run_reference(q0, T=0.01, snapshot_times=(0.005,), **kwargs)
+        short = run_reference(q0, T=0.005, **kwargs)
+        u_snap, q_snap = full.snapshots[0.005]
+        np.testing.assert_array_equal(q_snap, short.q)
+        np.testing.assert_array_equal(u_snap, short.u)
+
+    def test_carrier_snapshot_equals_a_run_stopped_at_that_time(self):
+        m = 100
+        _, _, g = g1_fields(m)
+        kwargs = dict(x_min=0.0, x_max=1.0, dt=1e-3, bandwidth=0.014,
+                      eps_rel=1e-8, alpha=ALPHA, closure="frozen_left")
+        full = run_gradient_carriers(g, T=0.01, snapshot_times=(0.005,),
+                                     **kwargs)
+        short = run_gradient_carriers(g, T=0.005, **kwargs)
+        u_snap, q_snap = full.snapshots[0.005]
+        np.testing.assert_array_equal(u_snap, short.u_final)
+        np.testing.assert_array_equal(q_snap, short.q_final)
+
+    def test_misaligned_snapshot_time_fails_loudly(self):
+        m = 60
+        _, _, g = g1_fields(m)
+        with self.assertRaises(Exception):
+            run_gradient_carriers(
+                g, x_min=0.0, x_max=1.0, T=0.01, dt=1e-3, bandwidth=0.014,
+                eps_rel=1e-8, alpha=ALPHA, closure="frozen_left",
+                snapshot_times=(0.0042,))
+
+
 class TestDecomposition(unittest.TestCase):
     def test_identity_and_reconciliation_are_exact(self):
         rng = np.random.default_rng(7)

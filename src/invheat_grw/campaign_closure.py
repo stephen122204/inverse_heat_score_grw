@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Callable
+from typing import Callable, Sequence
 
 import numpy as np
 
@@ -157,6 +157,20 @@ class CarrierRunResult:
     u_final: np.ndarray | None    # closure reconstruction on cell centers
     q_final: np.ndarray | None    # binned cell-average gradient field
     min_u: float
+    snapshots: dict | None = None  # reverse time -> (u, q) at archived times
+
+
+def _snapshot_steps(snapshot_times, dt: float, n_steps: int, T: float) -> dict:
+    """Map archived reverse times to exact step indices (contract-checked)."""
+    wanted: dict[int, float] = {}
+    for t_snap in snapshot_times:
+        k = round(t_snap / dt)
+        if k < 1 or k > n_steps or abs(k * dt - t_snap) > 1e-12 * max(1.0, T):
+            raise ClosureError(
+                f"snapshot time {t_snap} is not an exact step multiple of "
+                f"dt = {dt}")
+        wanted[k] = float(t_snap)
+    return wanted
 
 
 def run_gradient_carriers(
@@ -171,6 +185,7 @@ def run_gradient_carriers(
     alpha: float,
     closure: str,
     subparticles: int = 1,
+    snapshot_times: Sequence[float] = (),
 ) -> CarrierRunResult:
     """Transport one signed carrier per initial grid jump (optionally split
     into coincident equal-weight subparticles) by alpha * S_{h,eps}[U]."""
@@ -184,6 +199,7 @@ def run_gradient_carriers(
         raise ClosureError(f"time-step contract violated: {n_steps} * {dt} != {T}")
     if subparticles < 1:
         raise ClosureError("subparticles must be at least one")
+    wanted = _snapshot_steps(snapshot_times, dt, n_steps, T)
 
     edges = x_min + np.arange(1, m) * dx
     jumps = np.diff(g_grid)
@@ -204,6 +220,13 @@ def run_gradient_carriers(
             raise ClosureError(f"unknown closure {closure!r}")
         return u
 
+    def bin_q(pos: np.ndarray) -> np.ndarray:
+        counts = np.zeros(m)
+        cell_index = np.clip(((pos - x_min) / dx).astype(int), 0, m - 1)
+        np.add.at(counts, cell_index, weights)
+        return counts / dx
+
+    snapshots: dict[float, tuple[np.ndarray, np.ndarray]] = {}
     min_u = math.inf
     for step in range(n_steps):
         u = reconstruct(positions)
@@ -211,6 +234,8 @@ def run_gradient_carriers(
         if min_u <= 0.0:
             return CarrierRunResult("failed", step, "loss of positivity of U",
                                     None, None, min_u)
+        if step in wanted:
+            snapshots[wanted[step]] = (u.copy(), bin_q(positions))
         score = carrier_score(u, bandwidth, eps_abs, x_min=x_min, x_max=x_max)
         s_at = score(positions)
         if (not np.all(np.isfinite(s_at))) or np.max(np.abs(s_at)) > 1e6:
@@ -221,11 +246,11 @@ def run_gradient_carriers(
 
     u_final = reconstruct(positions)
     min_u = min(min_u, float(np.min(u_final)))
-    counts = np.zeros(m)
-    cell_index = np.clip(((positions - x_min) / dx).astype(int), 0, m - 1)
-    np.add.at(counts, cell_index, weights)
-    q_final = counts / dx
-    return CarrierRunResult("completed", None, "", u_final, q_final, min_u)
+    q_final = bin_q(positions)
+    if n_steps in wanted:
+        snapshots[wanted[n_steps]] = (u_final.copy(), q_final.copy())
+    return CarrierRunResult("completed", None, "", u_final, q_final, min_u,
+                            snapshots)
 
 
 # ---------------------------------------------------------------------------
@@ -257,6 +282,7 @@ class ReferenceRunResult:
     max_cfl: float
     speed_bound: float
     min_u: float
+    snapshots: dict | None = None  # reverse time -> (u, q) at archived times
 
 
 def run_reference(
@@ -273,6 +299,7 @@ def run_reference(
     alpha: float,
     bandwidth: float = 0.0,
     eps_rel: float = 0.0,
+    snapshot_times: Sequence[float] = (),
 ) -> ReferenceRunResult:
     """Solve q_t = -d/dx f by MUSCL/Rusanov/SSPRK3 with zero wall flux.
 
@@ -290,6 +317,7 @@ def run_reference(
         raise ClosureError(f"time-step contract violated: {n_steps} * {dt} != {T}")
     if kind not in ("regularized", "unregularized"):
         raise ClosureError(f"unknown reference kind {kind!r}")
+    wanted = _snapshot_steps(snapshot_times, dt, n_steps, T)
     eps_abs = eps_rel * total_mass / length
 
     max_cfl = 0.0
@@ -335,7 +363,8 @@ def run_reference(
         full_flux = np.concatenate([[0.0], flux, [0.0]])   # zero wall flux
         return -np.diff(full_flux) / dx, "", bound, bound * dt / dx
 
-    for _ in range(n_steps):
+    snapshots: dict[float, tuple[np.ndarray, np.ndarray]] = {}
+    for _step in range(n_steps):
         stage_state = q
         stages = []
         for _stage in range(3):
@@ -351,12 +380,18 @@ def run_reference(
             elif _stage == 1:
                 stage_state = 0.75 * q + 0.25 * (stage_state + dt * stages[1])
         q = q / 3.0 + (2.0 / 3.0) * (stage_state + dt * stages[2])
+        if _step + 1 in wanted:
+            constant = closure_constant(q, closure, dx=dx,
+                                        anchor_value=anchor_value,
+                                        total_mass=total_mass, length=length)
+            snapshots[wanted[_step + 1]] = (
+                reconstruct_centers(q, constant, dx), q.copy())
 
     constant = closure_constant(q, closure, dx=dx, anchor_value=anchor_value,
                                 total_mass=total_mass, length=length)
     u_final = reconstruct_centers(q, constant, dx)
     return ReferenceRunResult("completed", "", q, u_final, max_cfl,
-                              speed_bound, min_u_seen)
+                              speed_bound, min_u_seen, snapshots)
 
 
 # ---------------------------------------------------------------------------
