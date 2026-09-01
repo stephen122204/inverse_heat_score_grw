@@ -6,6 +6,22 @@ Reconstruction* by Stephen Abkin and Prabir Daripa.
 
 **Paper:** link to be added (arXiv preprint forthcoming).
 
+> **Status (2026-09-01).** The repository has two layers. The archived
+> v5.1 pipeline documented below reproduces the earlier draft's twelve
+> figures and is kept verbatim for provenance; its free-space estimator
+> is retained only for the labeled historical transition table. The
+> current production layer is the frozen Phase 2C campaign: the
+> canonical cell-centered Neumann estimator (`neumann_kde`, the default
+> for all campaign work, no longer "opt-in"), the preregistered
+> 3,203-row protocol (`PHASE2C_PROTOCOL.md`, FROZEN), its schema and
+> result contracts (`campaign_schema.py`, `campaign_results.py`), the
+> study drivers (`campaign_drivers.py`, `campaign_driver_transition.py`),
+> and the orchestrator (`scripts/run_science_campaign.py`; `--run STUDY`
+> executes behind the freeze gate with per-study hash manifests). The
+> test suite (`python -m unittest discover -s tests`) covers both
+> layers. The campaign itself is intentionally not yet run; see the
+> parent repository's REFRAME_PLAN.md.
+
 ## Getting Started
 
 ```bash
