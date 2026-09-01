@@ -34,6 +34,12 @@ class ScheduleLiteralsTests(unittest.TestCase):
         self.assertEqual(schema.CLOSURE_H_BRIDGE, (0.020, 0.014, 0.010, 0.007))
         self.assertEqual(schema.CLOSURE_REFINEMENTS,
                          ((200, 2e-3), (400, 1e-3), (800, 5e-4)))
+        # Amendment 2: variable-data truth resolutions, decoupled from the
+        # gradient-reference resolutions.
+        self.assertEqual(schema.DECRIME_FINE, (3200, 1.25e-4))
+        self.assertEqual(schema.DECRIME_FINER, (6400, 6.25e-5))
+        self.assertEqual(schema.CLOSURE_REF_RESOLUTIONS,
+                         ((1600, 2.5e-4), (3200, 1.25e-4)))
         # Amendment 1: per-case anchors for fixed-h studies.
         self.assertEqual(schema.ANCHOR_H, {"C1": 0.028, "C2": 0.028})
         self.assertEqual(schema.anchor_h("C1"), 0.028)

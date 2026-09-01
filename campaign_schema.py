@@ -67,13 +67,17 @@ LAMBDA_LOG_BOUNDS = (-12.0, -1.0)
 LAMBDA_SCAN_POINTS = 65
 LAMBDA_XATOL = 1e-6
 
-DECRIME_FINE = (1600, 2.5e-4)
-DECRIME_FINER = (3200, 1.25e-4)
+# Amendment 2 (2026-08-31): truth resolution raised after the 4x/8x gate
+# failed pre-campaign verification (Section 7 rule 5 prescribes exactly this
+# committed amendment); the gradient-reference resolutions below are stated
+# independently and are unchanged.
+DECRIME_FINE = (3200, 1.25e-4)
+DECRIME_FINER = (6400, 6.25e-5)
 DECRIME_GATE = 1e-6
 
 CLOSURE_REFINEMENTS = ((200, 2e-3), (400, 1e-3), (800, 5e-4))
 CLOSURE_H_BRIDGE = (0.020, 0.014, 0.010, 0.007)
-CLOSURE_REF_RESOLUTIONS = (DECRIME_FINE, DECRIME_FINER)
+CLOSURE_REF_RESOLUTIONS = ((1600, 2.5e-4), (3200, 1.25e-4))
 CLOSURE_REF_GATE = 1e-4
 CLOSURE_LAST_REDUCTION = 1.5
 SPLIT_INVARIANCE_TOL = 1e-13
@@ -169,6 +173,9 @@ def document_binding_needles() -> tuple[str, ...]:
         "Rusanov",
         "SSPRK3",
         "monotonized-central",
+        f"between the `{DECRIME_FINE[0] // DEFAULT_M}x` and "
+        f"`{DECRIME_FINER[0] // DEFAULT_M}x` projected data",
+        f"each reference at `M = {CLOSURE_REF_RESOLUTIONS[0][0]}`",
         f"(`h = {anchor_h('C1'):.3f}` for C1, `h = {anchor_h('Z'):.3f}` for Z)",
         f"(`h = {anchor_h('C1'):.3f}` for C1, `h = {anchor_h('H'):.3f}` for H)",
         f"`h = {anchor_h('C1'):.3f}` for the `T = 1` cases C1 and C2",
