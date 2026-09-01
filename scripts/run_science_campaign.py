@@ -70,9 +70,24 @@ def main() -> int:
         except schema.ProtocolNotFrozen as refusal:
             print(f"refused: {refusal}", file=sys.stderr)
             return 3
-        print("not implemented: study execution lands with the frozen "
-              "campaign build", file=sys.stderr)
-        return 4
+        from campaign_drivers import DRIVERS
+        driver = DRIVERS.get(args.run)
+        if driver is None:
+            print(f"not implemented yet: {args.run!r} (implemented: "
+                  f"{sorted(DRIVERS)})", file=sys.stderr)
+            return 4
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        out_dir = REPO / "outputs" / f"phase2c_{args.run}_{stamp}"
+        print(f"running {args.run} into {out_dir.relative_to(REPO)}")
+        accounting = driver(out_dir)
+        print(json.dumps(accounting.as_dict(), indent=1))
+        from provenance import write_manifest
+        manifest = write_manifest(
+            out_dir / "run_manifest.json", {args.run: out_dir},
+            [{"study": args.run, "argv": sys.argv}],
+            run_id=out_dir.name)
+        print(f"manifest: {manifest.relative_to(REPO)}")
+        return 0 if accounting.consistent else 5
     return 0
 
 
