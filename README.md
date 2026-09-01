@@ -105,9 +105,11 @@ and the diagnostic plots and saved arrays.
 
 ### Canonical Neumann score estimator
 
-The repaired analysis branch uses one mass-preserving Neumann heat kernel and
-its analytic derivative. It is opt-in while the bandwidth studies are being
-rerun and does not alter the archived paper outputs:
+The canonical branch uses one mass-preserving Neumann heat kernel and its
+analytic derivative. It is the default and sole estimator for all Phase 2C
+campaign work (the legacy free-space branch survives only for the labeled
+historical transition table); invoking it through the legacy method API
+looks like this, and does not alter the archived paper outputs:
 
 ```python
 run_density_particle_estimated_score_deterministic(
