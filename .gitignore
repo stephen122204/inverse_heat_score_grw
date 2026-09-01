@@ -27,3 +27,6 @@ scripts/run_sanity_checks.py
 scripts/run_targeted_suite.py
 scripts/run_single.py
 outputs/run_manifest_*.json
+
+# exploratory probe outputs stay local
+exploratory/*/outputs/
