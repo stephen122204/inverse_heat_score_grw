@@ -1,0 +1,44 @@
+{
+ "params": {
+  "alpha": 0.01,
+  "T": 1.0,
+  "h": 0.014,
+  "eps_rel": 1e-08,
+  "window_mode": 32
+ },
+ "amplification_at_window_e^{gamma T}": 2.00496909975871e+16,
+ "cases": {
+  "a0_float64": {
+   "blowup_tau": null,
+   "max_dev": 0.0,
+   "high_mode_max": 5.481509343652213e-15
+  },
+  "a0_float32": {
+   "blowup_tau": null,
+   "max_dev": 0.0,
+   "high_mode_max": 1.3291908658175089e-06
+  },
+  "a0_seed_1e-12": {
+   "blowup_tau": 0.935
+  },
+  "a0_seed_1e-10": {
+   "blowup_tau": 0.85575
+  },
+  "a0_seed_1e-8": {
+   "blowup_tau": 0.7755
+  },
+  "a0_M1024_N150": {
+   "blowup_tau": null,
+   "max_dev": 0.0,
+   "high_mode_max": 5.482593545824699e-15
+  },
+  "a0_dt5e-4": {
+   "blowup_tau": null,
+   "max_dev": 7.553170584426034,
+   "high_mode_max": 0.3681687797382409
+  },
+  "a0.1_float64": {
+   "blowup_tau": 0.9905
+  }
+ }
+}
