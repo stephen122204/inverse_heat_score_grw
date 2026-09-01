@@ -70,8 +70,9 @@ def main() -> int:
         except schema.ProtocolNotFrozen as refusal:
             print(f"refused: {refusal}", file=sys.stderr)
             return 3
+        from campaign_driver_transition import DRIVERS as TRANSITION_DRIVERS
         from campaign_drivers import DRIVERS
-        driver = DRIVERS.get(args.run)
+        driver = {**DRIVERS, **TRANSITION_DRIVERS}.get(args.run)
         if driver is None:
             print(f"not implemented yet: {args.run!r} (implemented: "
                   f"{sorted(DRIVERS)})", file=sys.stderr)
