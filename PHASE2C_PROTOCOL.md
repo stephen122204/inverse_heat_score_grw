@@ -204,11 +204,11 @@ For each method and arm report mean, standard deviation, median, 10th/90th perce
 Production variable-coefficient terminal data must be generated independently of the inverse grid:
 
 1. Form fine-grid initial cell averages from analytic integrals where available, otherwise from fixed high-order cell quadrature. Do not sample the initial field only at fine cell centers.
-2. Solve with the conservative forward operator at `4x` resolution: `M = 1600`, `dt = 2.5e-4`.
-3. Independently solve at `8x`: `M = 3200`, `dt = 1.25e-4`.
+2. Solve with the conservative forward operator at `8x` resolution: `M = 3200`, `dt = 1.25e-4`.
+3. Independently solve at `16x`: `M = 6400`, `dt = 6.25e-5`.
 4. Conservatively average both terminal solutions onto the common `M = 400` inverse grid before comparing them.
-5. Require the relative coarse-grid `L2` difference between the `4x` and `8x` projected data to be at most `1e-6`, and record the mass discrepancy. If the gate fails, increase truth resolution by a committed protocol amendment before inversion.
-6. Use the projected `4x` result as clean data. Add noise only after projection to the inverse grid.
+5. Require the relative coarse-grid `L2` difference between the `8x` and `16x` projected data to be at most `1e-6`, and record the mass discrepancy. If the gate fails, increase truth resolution by a committed protocol amendment before inversion.
+6. Use the projected `8x` result as clean data. Add noise only after projection to the inverse grid.
 
 Truth-error calculations compare the inverse result with analytic or high-order coarse-cell averages of the initial condition, not point samples. A same-grid/same-operator inversion is retained only as a labeled inverse-crime demonstration.
 
@@ -323,7 +323,7 @@ At minimum, the campaign gate checks:
 - the score truncation/floor gate in Section 4 passes for every completed particle run;
 - all requested bandwidth and lambda endpoints carry censor flags;
 - the Tikhonov monotonicity check passes for every row labeled Morozov;
-- the `4x`/`8x` variable-data gate in Section 7 passes;
+- the `8x`/`16x` variable-data gate in Section 7 passes;
 - the split-invariance and carrier-refinement gates in Section 8 pass;
 - both closure-reference refinement gates in Section 8 pass;
 - the `h = 0.007` regularized-to-unregularized discrepancy is smaller than the `h = 0.014` discrepancy;
@@ -390,3 +390,19 @@ for H and Z, whose horizons put the window below it.
 Affected studies: the epsilon-sensitivity C1 rows and the `N`-adequacy C1 rows
 move to `h = 0.028`; the Section 3 noiseless summary reference becomes
 per-case. Row counts and every other study are unchanged.
+
+## Amendment 2 (2026-08-31): variable-data truth resolution raised to 8x/16x
+
+Committed before any campaign row was executed; triggered by Section 7 rule 5,
+which prescribes a committed resolution amendment when the projected-data gate
+fails. Pre-campaign verification of the protocol's conservative
+Crank--Nicolson solver at the original `4x`/`8x` resolutions gave projected
+relative differences of `1.07e-6` (B, beta 0.5), `1.05e-6` (B, beta 0.9),
+`1.92e-6` (H, beta 0.5), and `1.71e-6` (H, beta 0.9), all above the `1e-6`
+gate; at `8x`/`16x` every pair passes with margin (largest difference
+`4.81e-7`), and the factor-four reduction confirms the expected second-order
+convergence, so the solver is sound and the original resolutions were one
+refinement too coarse. The gradient-study reference resolutions of Section 8
+are unchanged and are now stated independently of the variable-data
+resolutions. Affected: variable-coefficient data generation only; no other
+study changes and no reruns are triggered.
