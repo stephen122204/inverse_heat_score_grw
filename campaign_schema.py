@@ -75,6 +75,8 @@ DECRIME_FINE = (3200, 1.25e-4)
 DECRIME_FINER = (6400, 6.25e-5)
 DECRIME_GATE = 1e-6
 
+CLOSURE_BANDWIDTH = 0.014          # protocol Section 8 production score h
+CLOSURE_EPS_REL = 1e-8
 CLOSURE_REFINEMENTS = ((200, 2e-3), (400, 1e-3), (800, 5e-4))
 CLOSURE_H_BRIDGE = (0.020, 0.014, 0.010, 0.007)
 CLOSURE_REF_RESOLUTIONS = ((1600, 2.5e-4), (3200, 1.25e-4))
@@ -176,6 +178,8 @@ def document_binding_needles() -> tuple[str, ...]:
         f"between the `{DECRIME_FINE[0] // DEFAULT_M}x` and "
         f"`{DECRIME_FINER[0] // DEFAULT_M}x` projected data",
         f"each reference at `M = {CLOSURE_REF_RESOLUTIONS[0][0]}`",
+        f"closure comparison uses `h = {CLOSURE_BANDWIDTH:.3f}`, "
+        f"`epsilon_rel = {_pow10(CLOSURE_EPS_REL)}`",
         f"(`h = {anchor_h('C1'):.3f}` for C1, `h = {anchor_h('Z'):.3f}` for Z)",
         f"(`h = {anchor_h('C1'):.3f}` for C1, `h = {anchor_h('H'):.3f}` for H)",
         f"`h = {anchor_h('C1'):.3f}` for the `T = 1` cases C1 and C2",
