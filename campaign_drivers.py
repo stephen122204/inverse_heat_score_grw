@@ -321,7 +321,7 @@ def drive_bandwidth_clean(out_dir: Path,
                           rows: Sequence[dict] | None = None) -> results.Accounting:
     writer = results.StudyWriter("bandwidth_clean", Path(out_dir))
     for row in rows or results.enumerate_rows("bandwidth_clean"):
-        if results.row_key(row) in writer.done_keys:
+        if results.study_row_key(writer.study, row) in writer.done_keys:
             continue
         result, payload = _run_particle_row(row,
                                             n_particles=schema.DEFAULT_N)
@@ -337,7 +337,7 @@ def drive_epsilon_sensitivity(out_dir: Path,
                               ) -> results.Accounting:
     writer = results.StudyWriter("epsilon_sensitivity", Path(out_dir))
     for row in rows or results.enumerate_rows("epsilon_sensitivity"):
-        if results.row_key(row) in writer.done_keys:
+        if results.study_row_key(writer.study, row) in writer.done_keys:
             continue
         result, payload = _run_particle_row(row,
                                             n_particles=schema.DEFAULT_N)
@@ -352,7 +352,7 @@ def drive_adequacy(out_dir: Path,
                    rows: Sequence[dict] | None = None) -> results.Accounting:
     writer = results.StudyWriter("adequacy_N", Path(out_dir))
     for row in rows or results.enumerate_rows("adequacy_N"):
-        if results.row_key(row) in writer.done_keys:
+        if results.study_row_key(writer.study, row) in writer.done_keys:
             continue
         result, payload = _run_particle_row(row, n_particles=row["N"])
         _append_result(writer, row, result, payload)
@@ -383,7 +383,7 @@ def drive_lambda_oracle_clean(out_dir: Path,
                               ) -> results.Accounting:
     writer = results.StudyWriter("lambda_oracle_clean", Path(out_dir))
     for row in rows or results.enumerate_rows("lambda_oracle_clean"):
-        if results.row_key(row) in writer.done_keys:
+        if results.study_row_key(writer.study, row) in writer.done_keys:
             continue
         setup = build_case(row["case"])
         record = oracle_continuous(
@@ -490,7 +490,7 @@ def drive_noise_paired(out_dir: Path,
                        ) -> results.Accounting:
     writer = results.StudyWriter("noise_paired", Path(out_dir))
     for row in rows or results.enumerate_rows("noise_paired"):
-        if results.row_key(row) in writer.done_keys:
+        if results.study_row_key(writer.study, row) in writer.done_keys:
             continue
         setup = build_case(row["case"])
         if row["arm"] == "shared":
@@ -538,7 +538,7 @@ def drive_lambda_noise(out_dir: Path,
     writer = results.StudyWriter("lambda_noise", Path(out_dir))
     monotonicity_failures = 0
     for row in rows or results.enumerate_rows("lambda_noise"):
-        if results.row_key(row) in writer.done_keys:
+        if results.study_row_key(writer.study, row) in writer.done_keys:
             continue
         block = noise_block(row["case"], row["eta"], row["seed"])
         d = block.datum(row["arm"])
@@ -689,7 +689,7 @@ def drive_closure(out_dir: Path,
     fields_dir = out / "fields"
     fields_dir.mkdir(parents=True, exist_ok=True)
     for row in rows or results.enumerate_rows("closure"):
-        if results.row_key(row) in writer.done_keys:
+        if results.study_row_key(writer.study, row) in writer.done_keys:
             continue
         case, closure = row["case"], row["closure"]
         spec = schema.CASES[case]

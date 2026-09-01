@@ -92,8 +92,10 @@ class TestStudyWriter(unittest.TestCase):
             w2 = results.StudyWriter("epsilon_sensitivity", Path(tmp))
             done = w2.done_keys
             for row in rows[:3]:
-                self.assertIn(results.row_key(row), done)
-            self.assertNotIn(results.row_key(rows[3]), done)
+                self.assertIn(
+                    results.study_row_key("epsilon_sensitivity", row), done)
+            self.assertNotIn(
+                results.study_row_key("epsilon_sensitivity", rows[3]), done)
             with self.assertRaises(results.ResultContractError):
                 w2.append(rows[0], results.STATUS_COMPLETED,
                           {"E2": 0.0, "K": 1})  # duplicate across resume

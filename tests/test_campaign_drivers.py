@@ -183,6 +183,15 @@ class TestClosureDriver(unittest.TestCase):
                         for e in decomposition["cases"]}
             self.assertEqual(statuses[("G1", "frozen_left")],
                              "missing_inputs")
+            # Heterogeneous closure rows must resume, not duplicate.
+            again = drivers.drive_closure(out, rows=rows)
+            self.assertEqual(again.attempted, 4)
+            self.assertEqual(len(read_csv(out / "closure_rows.csv")), 4)
+
+    def test_closure_row_keys_are_unique_under_the_study_convention(self):
+        rows = results.enumerate_rows("closure")
+        keys = {results.study_row_key("closure", r) for r in rows}
+        self.assertEqual(len(keys), len(rows))
 
 
 class TestSelectorDriver(unittest.TestCase):

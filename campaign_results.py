@@ -22,6 +22,7 @@ Contract rules enforced here:
 from __future__ import annotations
 
 import csv
+from functools import lru_cache
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -67,19 +68,31 @@ def enumerate_rows(study: str) -> list[dict]:
     return schema.STUDIES[study]()
 
 
+def study_row_key(study: str, row: Mapping[str, Any]) -> str:
+    """Identity string over the study's full identity-field union, so
+    heterogeneous rows (the closure blocks) key consistently with the CSV."""
+    fields = identity_fields(study)
+    return "|".join(f"{k}={_format_value(row.get(k))}" for k in sorted(fields))
+
+
 def expected_keys(study: str) -> list[str]:
-    return [row_key(r) for r in enumerate_rows(study)]
+    return [study_row_key(study, r) for r in enumerate_rows(study)]
 
 
 def identity_fields(study: str) -> list[str]:
     """Union of identity fields over the study's enumeration, in first-seen
     order, so every CSV in one study shares one identity header."""
+    return list(_identity_fields_cached(study))
+
+
+@lru_cache(maxsize=None)
+def _identity_fields_cached(study: str) -> tuple[str, ...]:
     fields: list[str] = []
     for row in enumerate_rows(study):
         for key in row:
             if key not in fields:
                 fields.append(key)
-    return fields
+    return tuple(fields)
 
 
 def standard_normal_vector(seed: int, m: int) -> np.ndarray:
@@ -177,7 +190,7 @@ class StudyWriter:
     ) -> None:
         if status not in STATUSES:
             raise ResultContractError(f"invalid status {status!r}")
-        key = row_key(row)
+        key = study_row_key(self.study, row)
         if key not in self._expected:
             raise ResultContractError(
                 f"row is not in the preregistered {self.study} enumeration: {key}"
