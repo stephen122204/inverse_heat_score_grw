@@ -78,8 +78,15 @@ class DomainConventionTests(unittest.TestCase):
         trapezoidal call in a production path is an endpoint-era remnant."""
         self._require_discovery()
         pattern = re.compile(r"trapz|trapezoid", re.IGNORECASE)
+        # campaign_driver_transition.py is the one sanctioned legacy module
+        # (protocol Section 9): it vendors the pre-migration endpoint-era
+        # pipeline verbatim for the transition table, so its trapezoidal
+        # initializer is deliberate, isolated, and never a production path.
+        exempt = {"campaign_driver_transition.py"}
         offenders = []
         for rel in self.files:
+            if rel in exempt:
+                continue
             text = (REPO / rel).read_text(encoding="utf-8")
             for i, line in enumerate(text.splitlines(), start=1):
                 if pattern.search(line):
