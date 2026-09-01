@@ -206,8 +206,9 @@ def run_campaign_density(
     result.snapshots = snapshots
     result.diagnostics = {
         "n_modes": n_modes,
-        "first_omitted_multiplier": tolerance_for_modes(
-            n_modes, bandwidth, length) if n_modes else 1.0,
+        "first_omitted_multiplier": (math.exp(
+            -0.5 * ((n_modes + 1) * math.pi * bandwidth / length) ** 2)
+            if n_modes else 1.0),
         "B0": b0,
         "B1": b1,
         "eps_abs": eps_abs,

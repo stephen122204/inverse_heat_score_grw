@@ -10,6 +10,7 @@ from pathlib import Path
 import numpy as np
 
 REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "src"))
 
 from invheat_grw.campaign_particle import (  # noqa: E402
@@ -141,6 +142,15 @@ class TestQuickRuns(unittest.TestCase):
             g, x_min=0.0, x_max=1.0, T=0.005, dt=1e-3, n_particles=200,
             bandwidth=0.028, eps_rel=0.0, alpha=alpha)
         self.assertFalse(res.gates["eps_floor"])
+
+
+class TestFirstOmittedContract(unittest.TestCase):
+    def test_recorded_first_omitted_multiplier_meets_the_stated_cap(self):
+        import campaign_schema as schema
+        for h in schema.BANDWIDTHS:
+            k = neumann_mode_count(h, 1.0, 1e-14)
+            recorded = math.exp(-0.5 * ((k + 1) * math.pi * h) ** 2)
+            self.assertLessEqual(recorded, 1e-14, h)
 
 
 if __name__ == "__main__":
