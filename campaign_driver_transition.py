@@ -244,7 +244,7 @@ def drive_transition_table(out_dir: Path,
                            ) -> results.Accounting:
     writer = results.StudyWriter("transition_table", Path(out_dir))
     for row in rows or results.enumerate_rows("transition_table"):
-        if results.row_key(row) in writer.done_keys:
+        if results.study_row_key(writer.study, row) in writer.done_keys:
             continue
         outcome = ERA_RUNNERS[row["era"]]()
         payload = dict(ERA_METADATA[row["era"]])
