@@ -1158,8 +1158,11 @@ def drive_initial_rate(out_dir: Path,
                               failure_step=res.failure_step,
                               failure_message=message)
                 continue
+            # Amendment 3 Block B specifies the ABSOLUTE L2 norm
+            # ||U_carrier^M - U_ref||_{L2}, not a field-relative one.
             writer.append(row, results.STATUS_COMPLETED, _initial_rate_payload(
-                u_diff_ref=_rel(res.u_final, project_fine(ref.u, m), dx),
+                u_diff_ref=float(midpoint_norm(
+                    res.u_final - project_fine(ref.u, m), dx)),
                 min_u=res.min_u))
         elif row["block"] == "q_level":
             res = initial_rate_reference(case, closure, m, dt, tau)

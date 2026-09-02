@@ -294,3 +294,13 @@ class TestCrossoverDriver(unittest.TestCase):
             particle = [r for r in table if r["block"] == "particle"][0]
             self.assertTrue(math.isfinite(float(particle["e_2k_particle"])))
 
+    def test_low_order_model_reproduces_the_archived_anchor(self):
+        # Locks the jet hierarchy at kh = 0.264 against normalization or
+        # factor-of-two regressions (values reproduced independently before
+        # locking; ledger 71).
+        d, b, r1, r2 = drivers.crossover_low_order(0.264)
+        self.assertAlmostEqual(d, 0.0299630452, places=9)
+        self.assertAlmostEqual(b, 0.0594158705, places=9)
+        self.assertAlmostEqual(r1, -0.0035205899, places=9)
+        self.assertAlmostEqual(r2, 0.0144296719, places=9)
+
