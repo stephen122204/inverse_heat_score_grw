@@ -18,8 +18,11 @@ D1 = 1.0 / (h * math.sqrt(math.e))
 D2 = 2.0 / (math.e * h * h)
 gamma_star = alpha * m * D2            # sup of the continuous envelope
 R0 = 0.25
-beta = 2 * alpha * D1 * R0
-sigma0 = 1 + beta * T
+# AUDIT CORRECTION (ledger 64): absorption needs -sigma'/sigma >= k ||v||,
+# so beta carries the factor k; exponential shrink sigma = sigma0 e^{-beta t},
+# sigma0 = e^{beta T} (so sigma(T) = 1 exactly).
+beta = 2 * alpha * k * D1 * R0
+sigma0 = math.exp(beta * T)
 CQ = 8 * alpha * D2
 r0 = gamma_star / (4 * CQ * math.exp(gamma_star * T)) / (math.exp(-lam) * sigma0)
 # identical to m/(32 e^{g*T} e^{-lam} sigma0):
