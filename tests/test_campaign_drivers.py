@@ -218,12 +218,64 @@ class TestRegistry(unittest.TestCase):
     def test_registry_matches_the_implemented_studies(self):
         self.assertEqual(
             sorted(drivers.DRIVERS),
-            ["adequacy_N", "bandwidth_clean", "closure",
-             "epsilon_sensitivity", "lambda_noise", "lambda_oracle_clean",
-             "noise_paired"])
+            ["adequacy_N", "bandwidth_clean", "closure", "crossover",
+             "epsilon_sensitivity", "initial_rate", "lambda_noise",
+             "lambda_oracle_clean", "noise_paired"])
         for name in drivers.DRIVERS:
             self.assertIn(name, schema.STUDIES)
 
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestInitialRateDriver(unittest.TestCase):
+    def test_block_a_references_land_in_the_certificate_band(self):
+        rows = study_rows("initial_rate",
+                          lambda r: r["block"] == "reference"
+                          or (r["block"] == "carrier" and r["M"] == 200)
+                          or (r["block"] == "q_level" and r["tau"] == 0.0125))
+        self.assertEqual(len(rows), 4)
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            accounting = drivers.drive_initial_rate(out, rows=rows)
+            self.assertEqual(accounting.completed, 4)
+            table = read_csv(out / "initial_rate_rows.csv")
+            refs = [r for r in table if r["block"] == "reference"]
+            for r in refs:
+                self.assertEqual(r["within_band"], "True")
+                self.assertLess(abs(float(r["ratio"]) - 1.0), 0.0074)
+            gates = json.loads((out / "initial_rate_gates.json").read_text())
+            self.assertTrue(gates["verdicts"]["block_a_within_certificate_band"])
+            self.assertTrue(
+                gates["verdicts"]["block_a_reference_pair_defect_relative"])
+            carrier = [r for r in table if r["block"] == "carrier"][0]
+            self.assertTrue(math.isfinite(float(carrier["u_diff_ref"])))
+            q = [r for r in table if r["block"] == "q_level"][0]
+            self.assertLess(abs(float(q["ratio_q"]) - 1.0), 0.05)
+            again = drivers.drive_initial_rate(out, rows=rows)
+            self.assertEqual(again.attempted, 4)
+
+    def test_constants_match_the_closed_forms(self):
+        c = drivers.initial_rate_constants("G1")
+        self.assertAlmostEqual(c["c_rep"], 0.061389608316868, places=12)
+        self.assertAlmostEqual(c["slope_q"], 0.2103823758, places=9)
+
+
+class TestCrossoverDriver(unittest.TestCase):
+    def test_continuum_and_particle_rows_complete_with_finite_payloads(self):
+        rows = study_rows("crossover",
+                          lambda r: r["a"] == 0.35 and r["kh"] == 0.264
+                          and r["N"] in (None, 4000))
+        self.assertEqual(len(rows), 2)
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            accounting = drivers.drive_crossover(out, rows=rows)
+            self.assertEqual(accounting.completed, 2)
+            table = read_csv(out / "crossover_rows.csv")
+            for r in table:
+                for key in ("e_k", "e_2k", "d", "b", "r1", "r2"):
+                    self.assertTrue(math.isfinite(float(r[key])), key)
+            particle = [r for r in table if r["block"] == "particle"][0]
+            self.assertTrue(math.isfinite(float(particle["e_2k_particle"])))
+

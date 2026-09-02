@@ -88,7 +88,11 @@ class RowAccountingTests(unittest.TestCase):
         per_closure_case = (2 * 3) + 2 + (2 * 2 * 2) + (2 * 4 * 2)
         self.assertEqual(counts["closure"], 3 * per_closure_case)
         self.assertEqual(counts["transition_table"], 3)
-        self.assertEqual(sum(counts.values()), 3203)
+        # Amendment 3: 2 references + 3 carriers + 6 q-level taus
+        self.assertEqual(counts["initial_rate"], 2 + 3 + 6)
+        # Amendment 4: 4 x 3 continuum points + 2 x 2 particle rows
+        self.assertEqual(counts["crossover"], 4 * 3 + 2 * 2)
+        self.assertEqual(sum(counts.values()), 3230)
 
     def test_rows_are_well_formed(self):
         for name, fn in schema.STUDIES.items():

@@ -1026,6 +1026,315 @@ def closure_decomposition(out: Path) -> dict:
             "analytic_anchor_G1": anchor}
 
 
+# ---------------------------------------------------------------------------
+# Initial-rate diagnostic (protocol Amendment 3; Theorem R1, ledger 65-69)
+# ---------------------------------------------------------------------------
+
+INITIAL_RATE_PAYLOAD_KEYS = (
+    "e_U", "ratio", "c_rep", "gate_band", "within_band", "u_diff_ref",
+    "e_q", "ratio_q", "slope_q", "min_u",
+)
+
+
+def _initial_rate_payload(**values) -> dict:
+    payload = {key: NAN for key in INITIAL_RATE_PAYLOAD_KEYS}
+    for key, value in values.items():
+        if key not in payload:
+            raise CampaignGateError(f"unknown initial-rate payload key {key!r}")
+        payload[key] = value
+    return payload
+
+
+def initial_rate_constants(case: str) -> dict:
+    """Exact Corollary R1a constants for a c + a cos(pi x) closure case:
+    B = a e^{-alpha pi^2 T}, R = sqrt(c^2 - B^2), c_rep = alpha pi^2
+    sqrt(R (c - R)), and the q-level slope alpha pi^3 B sqrt(c / (2R))."""
+    spec = schema.CASES[case]
+    if "modes" not in spec or len(spec["modes"]) != 1 or spec["modes"][0][0] != 1:
+        raise CampaignGateError("initial-rate constants need a single cos(pi x) mode")
+    c, amp = spec["background"], spec["modes"][0][1]
+    alpha, big_t = spec["alpha"], spec["T"]
+    b = amp * math.exp(-alpha * math.pi ** 2 * big_t)
+    if c <= b:
+        raise CampaignGateError("initial-rate constants need c > B")
+    r = math.sqrt(c * c - b * b)
+    return {"c": c, "B": b, "R": r,
+            "c_rep": alpha * math.pi ** 2 * math.sqrt(r * (c - r)),
+            "slope_q": alpha * math.pi ** 3 * b * math.sqrt(c / (2.0 * r))}
+
+
+@lru_cache(maxsize=None)
+def initial_rate_reference(case: str, closure: str, m: int, dt: float,
+                           tau: float):
+    """Exact wrong flow (unregularized flux alpha q^2/U) to reverse time tau."""
+    spec = schema.CASES[case]
+    g, q0 = closure_state(case, m, 0.0)
+    dx = cell_spacing(X_MIN, X_MAX, m)
+    return run_reference(
+        q0, kind="unregularized", closure=closure, anchor_value=float(g[0]),
+        total_mass=float(dx * np.sum(g)), x_min=X_MIN, x_max=X_MAX, T=tau,
+        dt=dt, alpha=spec["alpha"], bandwidth=0.0, eps_rel=0.0)
+
+
+def drive_initial_rate(out_dir: Path,
+                       rows: Sequence[dict] | None = None
+                       ) -> results.Accounting:
+    out = Path(out_dir)
+    writer = results.StudyWriter("initial_rate", out)
+    for row in rows or results.enumerate_rows("initial_rate"):
+        if results.study_row_key(writer.study, row) in writer.done_keys:
+            continue
+        case, closure, tau = row["case"], row["closure"], float(row["tau"])
+        spec = schema.CASES[case]
+        consts = initial_rate_constants(case)
+        m, dt = int(row["M"]), float(row["dt"])
+        dx = cell_spacing(X_MIN, X_MAX, m)
+        if row["block"] == "reference":
+            res = initial_rate_reference(case, closure, m, dt, tau)
+            if res.status != "completed":
+                writer.append(row, results.STATUS_FAILED,
+                              _initial_rate_payload(min_u=res.min_u),
+                              failure_message=res.failure_message)
+                continue
+            u_true, _ = closure_state(case, m, tau)
+            e_u = float(midpoint_norm(res.u - u_true, dx))
+            ratio = e_u / (consts["c_rep"] * tau)
+            writer.append(row, results.STATUS_COMPLETED, _initial_rate_payload(
+                e_U=e_u, ratio=ratio, c_rep=consts["c_rep"],
+                gate_band=schema.INITIAL_RATE_GATE,
+                within_band=bool(abs(ratio - 1.0) <= schema.INITIAL_RATE_GATE),
+                min_u=res.min_u))
+        elif row["block"] == "carrier":
+            g, _ = closure_state(case, m, 0.0)
+            res = run_gradient_carriers(
+                g, x_min=X_MIN, x_max=X_MAX, T=tau, dt=dt,
+                bandwidth=schema.CLOSURE_BANDWIDTH,
+                eps_rel=schema.CLOSURE_EPS_REL, alpha=spec["alpha"],
+                closure=closure)
+            fine_m, fine_dt = schema.INITIAL_RATE_REFERENCES[-1]
+            ref = initial_rate_reference(case, closure, fine_m, fine_dt, tau)
+            if res.status != "completed" or ref.status != "completed":
+                message = "; ".join(r.failure_message for r in (res, ref)
+                                    if r.status != "completed")
+                writer.append(row, results.STATUS_FAILED,
+                              _initial_rate_payload(min_u=res.min_u),
+                              failure_step=res.failure_step,
+                              failure_message=message)
+                continue
+            writer.append(row, results.STATUS_COMPLETED, _initial_rate_payload(
+                u_diff_ref=_rel(res.u_final, project_fine(ref.u, m), dx),
+                min_u=res.min_u))
+        elif row["block"] == "q_level":
+            res = initial_rate_reference(case, closure, m, dt, tau)
+            if res.status != "completed":
+                writer.append(row, results.STATUS_FAILED,
+                              _initial_rate_payload(min_u=res.min_u),
+                              failure_message=res.failure_message)
+                continue
+            _, q_true = closure_state(case, m, tau)
+            e_q = float(midpoint_norm(res.q - q_true, dx))
+            writer.append(row, results.STATUS_COMPLETED, _initial_rate_payload(
+                e_q=e_q, ratio_q=e_q / (consts["slope_q"] * tau),
+                slope_q=consts["slope_q"], min_u=res.min_u))
+        else:
+            raise CampaignGateError(f"unknown initial-rate block {row['block']!r}")
+    accounting = results.reconcile("initial_rate", writer.csv_path)
+    gates = initial_rate_gates(writer.csv_path)
+    (out / "initial_rate_gates.json").write_text(
+        json.dumps(gates, indent=1) + "\n", encoding="utf-8")
+    verdicts = {"accounting_consistent": accounting.consistent}
+    verdicts.update(gates["verdicts"])
+    results.write_summary(out, accounting, verdicts)
+    return accounting
+
+
+def initial_rate_gates(csv_path: Path) -> dict:
+    """Block A gates: both references inside the certificate band, and the
+    reference pair agreeing relative to the defect signal c_rep * tau.
+    A failure blocks the numerical validation and triggers reference-
+    resolution diagnosis; it does not by itself contradict the theorem."""
+    refs = [r for r in _read_rows(csv_path) if r["block"] == "reference"
+            and r["status"] == results.STATUS_COMPLETED]
+    verdicts: dict[str, bool] = {}
+    detail: dict[str, object] = {"references": []}
+    if len(refs) == len(schema.INITIAL_RATE_REFERENCES):
+        within = all(r["within_band"] == "True" for r in refs)
+        refs.sort(key=lambda r: int(r["M"]))
+        c_rep = float(refs[0]["c_rep"])
+        tau = float(refs[0]["tau"])
+        pair = abs(float(refs[0]["e_U"]) - float(refs[1]["e_U"])) / (c_rep * tau)
+        verdicts["block_a_within_certificate_band"] = bool(within)
+        verdicts["block_a_reference_pair_defect_relative"] = bool(
+            pair <= schema.INITIAL_RATE_PAIR_GATE)
+        detail["pair_defect_relative"] = pair
+        detail["references"] = [{"M": int(r["M"]), "e_U": float(r["e_U"]),
+                                 "ratio": float(r["ratio"])} for r in refs]
+    else:
+        verdicts["block_a_within_certificate_band"] = False
+        verdicts["block_a_reference_pair_defect_relative"] = False
+    detail["verdicts"] = verdicts
+    detail["evidence_grade_blocks"] = ["carrier", "q_level"]
+    return detail
+
+
+# ---------------------------------------------------------------------------
+# Crossover phenomenology block (protocol Amendment 4; evidence-grade only)
+# ---------------------------------------------------------------------------
+
+CROSSOVER_PAYLOAD_KEYS = (
+    "e_k", "e_2k", "gap", "harmonic_dominant", "d", "b", "r1", "r2",
+    "pred_e_k", "pred_e_2k", "min_u", "e_k_particle", "e_2k_particle",
+)
+
+
+def _crossover_payload(**values) -> dict:
+    payload = {key: NAN for key in CROSSOVER_PAYLOAD_KEYS}
+    for key, value in values.items():
+        if key not in payload:
+            raise CampaignGateError(f"unknown crossover payload key {key!r}")
+        payload[key] = value
+    return payload
+
+
+def _crossover_k() -> float:
+    return schema.CROSSOVER_MODE * math.pi / LENGTH
+
+
+@lru_cache(maxsize=None)
+def crossover_continuum(a: float, kh: float) -> tuple:
+    """Density method's continuum flow for u0 = 1 + a cos(kx) by cosine
+    collocation with the sine-projected flux derivative (fully spectral),
+    exact terminal datum, RK4.  Returns (e_k, e_2k, min_u)."""
+    from scipy.signal import fftconvolve  # noqa: F401  (dependency check)
+    cells, nmodes, dt = schema.CROSSOVER_CONTINUUM
+    alpha, big_t = schema.CROSSOVER_ALPHA, schema.CROSSOVER_T
+    k = _crossover_k()
+    h = kh / k
+    eps_abs = schema.CROSSOVER_EPS_REL          # M0 = 1, L = 1
+    x = (np.arange(cells) + 0.5) / cells
+    dx = 1.0 / cells
+    kv = np.arange(1, nmodes + 1) * math.pi
+    cos = np.cos(np.outer(x, kv))
+    sin = np.sin(np.outer(x, kv))
+    phi = np.exp(-0.5 * (kv * h) ** 2)
+
+    def rhs(rho):
+        c = 2.0 * dx * (cos.T @ rho)
+        w = rho.mean() + cos @ (c * phi)
+        wx = -sin @ (c * phi * kv)
+        flux = rho * wx / (w + eps_abs)
+        f_sin = 2.0 * dx * (sin.T @ flux)
+        return -alpha * (cos @ (f_sin * kv))
+
+    rho = 1.0 + a * math.exp(-alpha * k * k * big_t) * np.cos(k * x)
+    min_u = float(rho.min())
+    for _ in range(round(big_t / dt)):
+        k1 = rhs(rho); k2 = rhs(rho + 0.5 * dt * k1)
+        k3 = rhs(rho + 0.5 * dt * k2); k4 = rhs(rho + dt * k3)
+        rho = rho + dt / 6.0 * (k1 + 2 * k2 + 2 * k3 + k4)
+        min_u = min(min_u, float(rho.min()))
+    err = rho - (1.0 + a * np.cos(k * x))
+    coeff = 2.0 * dx * (cos.T @ err)
+    mode = schema.CROSSOVER_MODE
+    return float(coeff[mode - 1]), float(coeff[2 * mode - 1]), min_u
+
+
+@lru_cache(maxsize=None)
+def crossover_low_order(kh: float) -> tuple:
+    """Exact amplitude-jet hierarchy of the lattice flow through order four:
+    returns (d, b, r1, r2) for the low-order model
+    e_k = -a d + a^3 r1, e_2k = a^2 b + a^4 r2 (evidence-grade)."""
+    from scipy.signal import fftconvolve
+    alpha, big_t = schema.CROSSOVER_ALPHA, schema.CROSSOVER_T
+    k = _crossover_k()
+    h = kh / k
+    nmax, order, steps = 6, 5, 2000
+    dt = big_t / steps
+    m_eps = 1.0 / (1.0 + schema.CROSSOVER_EPS_REL)
+    idx = lambda n: n + nmax
+    kappa = np.array([n * k for n in range(-nmax, nmax + 1)])
+    phi = np.exp(-0.5 * (kappa * h) ** 2)
+    delta = np.zeros((2 * nmax + 1, order)); delta[idx(0), 0] = 1.0
+    dk = (1j * kappa)[:, None]
+
+    def jmul(a_, b_):
+        return fftconvolve(a_, b_)[nmax:3 * nmax + 1, :order]
+
+    def solve_v(c):
+        w_off = (phi[:, None] * c).copy(); w_off[idx(0)] = 0.0
+        v = m_eps * delta.copy()
+        for _ in range(order + 3):
+            v = m_eps * (delta - jmul(w_off, v))
+        return v
+
+    def rhs(c):
+        return (-alpha) * dk * jmul(jmul(c, dk * phi[:, None] * c), solve_v(c))
+
+    c = np.zeros((2 * nmax + 1, order), dtype=complex)
+    c[idx(0), 0] = 1.0
+    a0 = math.exp(-alpha * k * k * big_t) / 2.0
+    c[idx(1), 1] = a0; c[idx(-1), 1] = a0
+    for _ in range(steps):
+        k1 = rhs(c); k2 = rhs(c + 0.5 * dt * k1)
+        k3 = rhs(c + 0.5 * dt * k2); k4 = rhs(c + dt * k3)
+        c = c + dt / 6.0 * (k1 + 2 * k2 + 2 * k3 + k4)
+    ck = 2 * c[idx(1)].real
+    c2k = 2 * c[idx(2)].real
+    return float(1.0 - ck[1]), float(c2k[2]), float(ck[3]), float(c2k[4])
+
+
+def drive_crossover(out_dir: Path,
+                    rows: Sequence[dict] | None = None) -> results.Accounting:
+    out = Path(out_dir)
+    writer = results.StudyWriter("crossover", out)
+    k = _crossover_k()
+    alpha, big_t = schema.CROSSOVER_ALPHA, schema.CROSSOVER_T
+    for row in rows or results.enumerate_rows("crossover"):
+        if results.study_row_key(writer.study, row) in writer.done_keys:
+            continue
+        a, kh = float(row["a"]), float(row["kh"])
+        e_k, e_2k, min_u = crossover_continuum(a, kh)
+        d, b, r1, r2 = crossover_low_order(kh)
+        base = dict(e_k=e_k, e_2k=e_2k, gap=abs(e_2k) - abs(e_k),
+                    harmonic_dominant=bool(abs(e_2k) > abs(e_k)),
+                    d=d, b=b, r1=r1, r2=r2,
+                    pred_e_k=-a * d + a ** 3 * r1,
+                    pred_e_2k=a * a * b + a ** 4 * r2, min_u=min_u)
+        if row["block"] == "continuum":
+            writer.append(row, results.STATUS_COMPLETED,
+                          _crossover_payload(**base))
+        elif row["block"] == "particle":
+            m = schema.DEFAULT_M
+            x = cell_centers(X_MIN, X_MAX, m)
+            dx = cell_spacing(X_MIN, X_MAX, m)
+            g = 1.0 + a * math.exp(-alpha * k * k * big_t) * np.cos(k * x)
+            u0 = 1.0 + a * np.cos(k * x)
+            res = run_campaign_density(
+                g, x_min=X_MIN, x_max=X_MAX, T=big_t, dt=schema.DEFAULT_DT,
+                n_particles=int(row["N"]), bandwidth=kh / k,
+                eps_rel=schema.CROSSOVER_EPS_REL, alpha=alpha,
+                u0_reference=u0)
+            if res.status != "completed":
+                writer.append(row, results.STATUS_FAILED,
+                              _crossover_payload(**base),
+                              failure_step=res.failure_step,
+                              failure_message=res.failure_message)
+                continue
+            err = res.reconstruction - u0
+            mode = schema.CROSSOVER_MODE
+            ek_p = float(2.0 * dx * np.sum(err * np.cos(mode * math.pi * x)))
+            e2k_p = float(2.0 * dx * np.sum(err * np.cos(2 * mode * math.pi * x)))
+            writer.append(row, results.STATUS_COMPLETED, _crossover_payload(
+                **base, e_k_particle=ek_p, e_2k_particle=e2k_p))
+        else:
+            raise CampaignGateError(f"unknown crossover block {row['block']!r}")
+    accounting = results.reconcile("crossover", writer.csv_path)
+    results.write_summary(out, accounting,
+                          {"accounting_consistent": accounting.consistent},
+                          extra={"gates": "none by design (evidence-grade)"})
+    return accounting
+
+
 DRIVERS: dict[str, Callable[[Path], results.Accounting]] = {
     "bandwidth_clean": drive_bandwidth_clean,
     "epsilon_sensitivity": drive_epsilon_sensitivity,
@@ -1034,4 +1343,6 @@ DRIVERS: dict[str, Callable[[Path], results.Accounting]] = {
     "noise_paired": drive_noise_paired,
     "lambda_noise": drive_lambda_noise,
     "closure": drive_closure,
+    "initial_rate": drive_initial_rate,
+    "crossover": drive_crossover,
 }

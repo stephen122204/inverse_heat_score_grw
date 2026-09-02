@@ -425,7 +425,13 @@ new study `initial_rate` under the Section 10 accounting:
   reference kind `unregularized` (`f = alpha q^2/U`, the exact wrong flow),
   reverse time `tau = 0.005` (inside the certified interval; the earlier
   exploratory `tau = 0.0125` lies outside it and is not theorem-backed),
-  at the two finest preregistered Section 8 reference resolutions. `U` is
+  at the reference pair `(6400, 6.25e-05), (12800, 3.125e-05)` (cells, time
+  step). Resolution fixed before execution from a pre-use ladder: the
+  defect-relative pair differences are `7.3e-4` (1600/3200), `1.8e-4`
+  (3200/6400), and `4.6e-5` (6400/12800), clean second-order convergence,
+  so the Section 8 pair (1600/3200) cannot meet the defect-relative gate
+  below and the first pair that does is (6400/12800); the ladder's ratio
+  converges to `1.00033`. `U` is
   reconstructed from `q` by the mass closure and compared with the explicit
   `u_true(tau) = 2 + B exp(alpha pi^2 tau) cos(pi x)` in `L2(0,1)` on the
   reference grid. Gate (two-sided, from the Taylor certificate):
@@ -441,7 +447,9 @@ new study `initial_rate` under the Section 10 accounting:
   itself invalidate a proved continuum theorem when the reference solver may
   be responsible). Rows: 2.
 - **Block B (evidence-grade, particle).** Gradient carriers with closure
-  `mass` at the Section 8 carrier refinement ladder, `tau = 0.005`,
+  `mass` at the Section 8 carrier ladder `(200, 0.001), (400, 0.0005), (800, 0.00025)`
+  (cells, time step; the steps are halved from Section 8 so that they divide
+  the reverse time), `tau = 0.005`,
   compared with the finest Block A reference: report
   `||U_carrier^M(tau) - U_ref(tau)||_{L2}` per `M`. Expectation: monotone
   decrease under refinement. NO theorem constant enters; this block MUST be
@@ -449,7 +457,8 @@ new study `initial_rate` under the Section 10 accounting:
   track the continuum wrong flow, never as a consequence of Theorem R1.
   Rows: one per ladder resolution (3).
 - **Block C (evidence-grade, retained).** The q-level separation table of
-  the exploratory rate check, `tau in {0.0125, 0.025, 0.05, 0.1, 0.2, 0.4}`
+  the exploratory rate check at `M = 3200, dt = 0.000125`,
+  `tau in {0.0125, 0.025, 0.05, 0.1, 0.2, 0.4}`
   against the q-level slope `||d/dx D[g]|| = alpha pi^3 B sqrt(2/(2R))`
   (`0.2103824`), reported as validation of the general theorem's `O(tau^2)`
   form OUTSIDE the certified interval. No gate; the ratios are reported as
@@ -484,7 +493,8 @@ THROUGHLINE E1).
   throughout).** Single-mode data `u0 = 1 + a cos(3 pi x)`, `alpha = 0.01`,
   `T = 1`, `eps_rel = 1e-8`, the density method's continuum lattice flow
   solved by the purified pseudospectral collocation of the exploratory
-  record (promoted into the drivers with pre-use tests), at the 12
+  record (promoted into the drivers with pre-use tests;
+  `1024` collocation cells, `150` modes, `dt = 0.0005`), at the 12
   prespecified points `a in {0.35, 0.50, 0.55, 0.60}` x
   `kh in {0.23, 0.264, 0.29}`; observables: the cosine coefficients of the
   reconstruction error at modes `k` and `2k` and the sign of
