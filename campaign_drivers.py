@@ -529,7 +529,32 @@ LAMBDA_NOISE_PAYLOAD_KEYS = (
     "selection_label", "z_selected", "lambda_selected", "E2_at_selection",
     "residual_at_selection", "evaluations", "coarse_winner_z",
     "target_residual", "delta_nom", "delta_real",
+    "E2_tikhonov_raw", "E2_tikhonov_projected",
 )
+
+
+def project_positive_mass(u: np.ndarray, total_mass: float, dx: float
+                          ) -> np.ndarray:
+    """Exact L2 metric projection onto {u >= 0, dx * sum(u) = total_mass}:
+    the water-filling map u -> max(u - mu, 0) with the multiplier mu solving
+    the mass constraint (NOT clip-and-rescale, which is not the projection).
+    Amendment 4 comparator."""
+    u = np.asarray(u, dtype=float)
+    if total_mass <= 0.0:
+        raise CampaignGateError("projection needs a positive target mass")
+
+    def mass(mu: float) -> float:
+        return float(dx * np.sum(np.maximum(u - mu, 0.0)))
+
+    lo = float(u.min()) - total_mass / (dx * u.size) - 1.0   # mass(lo) > M0
+    hi = float(u.max())                                        # mass(hi) = 0
+    for _ in range(200):
+        mid = 0.5 * (lo + hi)
+        if mass(mid) > total_mass:
+            lo = mid
+        else:
+            hi = mid
+    return np.maximum(u - 0.5 * (lo + hi), 0.0)
 
 
 def drive_lambda_noise(out_dir: Path,
@@ -566,11 +591,22 @@ def drive_lambda_noise(out_dir: Path,
                      "residual_at_selection": NAN,
                      "evaluations": record.evaluations,
                      "coarse_winner_z": NAN, "target_residual": target,
-                     "delta_nom": delta_n, "delta_real": delta_r},
+                     "delta_nom": delta_n, "delta_real": delta_r,
+                     "E2_tikhonov_raw": NAN, "E2_tikhonov_projected": NAN},
                     failure_message="Tikhonov residual monotonicity violated")
                 continue
             e2 = objective(record.z)
             resid = record.value
+        # Amendment 4 comparator: the selected Tikhonov field after the exact
+        # metric projection onto the positive fixed-mass set, with the mass
+        # the density method itself uses for this arm (clipped datum mass).
+        setup = build_case(row["case"])
+        dx_c = cell_spacing(X_MIN, X_MAX, schema.DEFAULT_M)
+        u_sel = tools.solve(d, record.lam)
+        m0 = float(dx_c * np.sum(np.maximum(d, 0.0)))
+        u_proj = project_positive_mass(u_sel, m0, dx_c)
+        e2_proj = float(midpoint_norm(u_proj - setup.truth, dx_c)
+                        / midpoint_norm(setup.truth, dx_c))
         payload = {
             "selection_label": record.label, "z_selected": record.z,
             "lambda_selected": record.lam, "E2_at_selection": e2,
@@ -578,6 +614,7 @@ def drive_lambda_noise(out_dir: Path,
             "evaluations": record.evaluations, "coarse_winner_z": coarse,
             "target_residual": target, "delta_nom": delta_n,
             "delta_real": delta_r,
+            "E2_tikhonov_raw": e2, "E2_tikhonov_projected": e2_proj,
         }
         writer.append(row, results.STATUS_COMPLETED, payload,
                       censored=record.endpoint)
