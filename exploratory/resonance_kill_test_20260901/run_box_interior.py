@@ -1,3 +1,8 @@
+"""NOT CERTIFICATION (RED audit, ledger 62): numerical evidence only.
+The tail bounds below extrapolate observed coefficient ratios (unproved),
+the box is a sampled grid, and analyticity/denominator convergence is
+assumed, not proved. Quote as exploratory evidence, never as a theorem.
+Original docstring follows."""
 """Interior densification + monotonicity of the certified box (EXPLORATORY)."""
 import math, json, itertools
 import numpy as np

@@ -1,3 +1,8 @@
+"""NOT CERTIFICATION (RED audit, ledger 62): numerical evidence only.
+The tail bounds below extrapolate observed coefficient ratios (unproved),
+the box is a sampled grid, and analyticity/denominator convergence is
+assumed, not proved. Quote as exploratory evidence, never as a theorem.
+Original docstring follows."""
 """Certified box minimum gap + phase boundary (EXPLORATORY, load-bearing).
 Runs in background; writes box_certification.json."""
 import math, json, itertools
