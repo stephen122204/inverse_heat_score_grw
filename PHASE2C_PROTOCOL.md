@@ -414,7 +414,7 @@ Committed before any campaign row was executed; triggered by Theorem R1
 gradient representation and an admissible datum, `U_wrong(tau) -
 u_true(tau) = tau D[g] + O(tau^2)`, with the exact G1 slope
 `c_rep = ||D[g]||_{L2(0,1)} = alpha pi^2 sqrt(R (2 - R))`, `R = sqrt(4 - B^2)`,
-`B = exp(-alpha pi^2 T)` (value `0.061389608`), and the conservative
+`B = exp(-alpha pi^2 T) = 0.9060180558...`, `c_rep = 0.0613896083...`, and the conservative
 certificate `| ||w(tau)|| - c_rep tau | <= (M/2) tau^2` with `M = 0.1812` on
 the certified interval `0 <= tau <= 0.0074`. The theorem concerns the
 CONTINUUM wrong flow; finite-particle transfer is open (ledger 66, O1). The
@@ -430,11 +430,16 @@ new study `initial_rate` under the Section 10 accounting:
   `u_true(tau) = 2 + B exp(alpha pi^2 tau) cos(pi x)` in `L2(0,1)` on the
   reference grid. Gate (two-sided, from the Taylor certificate):
   `| e_U(tau) / (c_rep tau) - 1 | <= (M/2) tau / c_rep = 0.0074` for BOTH
-  resolutions, and the two resolutions must agree to relative `1e-4`
-  (reference-resolution sanity, the Section 8 pair discipline). A pass
-  verifies the continuum theorem's prediction within its own certified band;
-  a fail is a preregistered contradiction and blocks the manuscript claim.
-  Rows: 2.
+  resolutions, and the two resolutions must agree RELATIVE TO THE DEFECT
+  SIGNAL: `| e_U^fine - e_U^finer | / (c_rep tau) <= 1e-4` (reference-
+  resolution sanity, the Section 8 pair discipline; relative to the O(1)
+  field would be far too loose for an O(1e-4) separation). A pass verifies
+  the continuum theorem's prediction within its own certified band. A
+  failure blocks use of the numerical validation and triggers reference-
+  resolution diagnosis; it challenges the manuscript claim only after
+  numerical-reference error has been ruled out (a computation cannot by
+  itself invalidate a proved continuum theorem when the reference solver may
+  be responsible). Rows: 2.
 - **Block B (evidence-grade, particle).** Gradient carriers with closure
   `mass` at the Section 8 carrier refinement ladder, `tau = 0.005`,
   compared with the finest Block A reference: report
