@@ -406,3 +406,95 @@ refinement too coarse. The gradient-study reference resolutions of Section 8
 are unchanged and are now stated independently of the variable-data
 resolutions. Affected: variable-coefficient data generation only; no other
 study changes and no reruns are triggered.
+
+## Amendment 3 (2026-09-02): initial-rate diagnostic, two-tier (theorem-backed continuum check; evidence-grade particle tracking)
+
+Committed before any campaign row was executed; triggered by Theorem R1
+(rate_program.tex, ledger 65-68): for the mass-closed wrong flow of the
+gradient representation and an admissible datum, `U_wrong(tau) -
+u_true(tau) = tau D[g] + O(tau^2)`, with the exact G1 slope
+`c_rep = ||D[g]||_{L2(0,1)} = alpha pi^2 sqrt(R (2 - R))`, `R = sqrt(4 - B^2)`,
+`B = exp(-alpha pi^2 T)` (value `0.061389608`), and the conservative
+certificate `| ||w(tau)|| - c_rep tau | <= (M/2) tau^2` with `M = 0.1812` on
+the certified interval `0 <= tau <= 0.0074`. The theorem concerns the
+CONTINUUM wrong flow; finite-particle transfer is open (ledger 66, O1). The
+diagnostic therefore has three blocks with distinct evidential status, in a
+new study `initial_rate` under the Section 10 accounting:
+
+- **Block A (theorem-backed, continuum).** Case G1, closure `mass`,
+  reference kind `unregularized` (`f = alpha q^2/U`, the exact wrong flow),
+  reverse time `tau = 0.005` (inside the certified interval; the earlier
+  exploratory `tau = 0.0125` lies outside it and is not theorem-backed),
+  at the two finest preregistered Section 8 reference resolutions. `U` is
+  reconstructed from `q` by the mass closure and compared with the explicit
+  `u_true(tau) = 2 + B exp(alpha pi^2 tau) cos(pi x)` in `L2(0,1)` on the
+  reference grid. Gate (two-sided, from the Taylor certificate):
+  `| e_U(tau) / (c_rep tau) - 1 | <= (M/2) tau / c_rep = 0.0074` for BOTH
+  resolutions, and the two resolutions must agree to relative `1e-4`
+  (reference-resolution sanity, the Section 8 pair discipline). A pass
+  verifies the continuum theorem's prediction within its own certified band;
+  a fail is a preregistered contradiction and blocks the manuscript claim.
+  Rows: 2.
+- **Block B (evidence-grade, particle).** Gradient carriers with closure
+  `mass` at the Section 8 carrier refinement ladder, `tau = 0.005`,
+  compared with the finest Block A reference: report
+  `||U_carrier^M(tau) - U_ref(tau)||_{L2}` per `M`. Expectation: monotone
+  decrease under refinement. NO theorem constant enters; this block MUST be
+  described in the manuscript as evidence that the implemented carriers
+  track the continuum wrong flow, never as a consequence of Theorem R1.
+  Rows: one per ladder resolution (3).
+- **Block C (evidence-grade, retained).** The q-level separation table of
+  the exploratory rate check, `tau in {0.0125, 0.025, 0.05, 0.1, 0.2, 0.4}`
+  against the q-level slope `||d/dx D[g]|| = alpha pi^3 B sqrt(2/(2R))`
+  (`0.2103824`), reported as validation of the general theorem's `O(tau^2)`
+  form OUTSIDE the certified interval. No gate; the ratios are reported as
+  "predicted within the reported numerical error". Rows: 6.
+
+Accounting: 11 new rows; the preregistered total becomes 3,214. Implementation
+obligation before execution: a driver `drive_initial_rate` in the drivers
+registry with pre-use tests (Section 10), the schema row enumeration and the
+expected-total constant updated, and the row-key identity fields
+`(case, closure, block, M, tau)`. Affected: no existing study changes; no
+reruns.
+
+## Amendment 4 (2026-09-02): honest comparator columns and the crossover phenomenology block
+
+Committed before any campaign row was executed; triggered by CLAIM_MATRIX
+item 8 (projected/constrained Tikhonov must be compared honestly) and by the
+closure of the crossover program as numerical phenomenology (ledger 62-64,
+THROUGHLINE E1).
+
+- **Comparator columns (payload extension, no new rows).** Every
+  `lambda_noise` row gains two columns: `E2_tikhonov_projected`, the error of
+  the selected Tikhonov reconstruction after the `L2` metric projection onto
+  `{u >= 0, dx sum(u) = M0}` (the water-filling projection `u -> max(u - mu, 0)`
+  with `mu` chosen for the mass; NOT clip-and-rescale, which is not the
+  metric projection), and `E2_tikhonov_raw`, the unprojected value already
+  reported. Selection is unchanged (residual-selected lambda from the
+  unprojected residual; projection is post-processing). No gate: comparator
+  values are reported alongside the density method's `E2` at the same
+  `(case, eta, seed, arm)`. The manuscript's positivity claim is scoped
+  accordingly (intrinsic versus imposed positivity, both reported).
+- **Crossover phenomenology block (new study `crossover`, evidence-grade
+  throughout).** Single-mode data `u0 = 1 + a cos(3 pi x)`, `alpha = 0.01`,
+  `T = 1`, `eps_rel = 1e-8`, the density method's continuum lattice flow
+  solved by the purified pseudospectral collocation of the exploratory
+  record (promoted into the drivers with pre-use tests), at the 12
+  prespecified points `a in {0.35, 0.50, 0.55, 0.60}` x
+  `kh in {0.23, 0.264, 0.29}`; observables: the cosine coefficients of the
+  reconstruction error at modes `k` and `2k` and the sign of
+  `|e_2k| - |e_k|`. The comparison object is the exact low-order model
+  (`d`, `b`, `r1`, `r2` from the committed jet hierarchy, evidence-grade),
+  reported as "predicted within the reported numerical error". Particle
+  tracking at two prespecified points, `(a, kh) = (0.35, 0.264)` below and
+  `(0.60, 0.264)` above the observed crossover, with `N in {4000, 10000}`
+  via the production density path: report the mode-`2k` coefficient against
+  the continuum value. No gate anywhere in this block; nothing in it may be
+  called a theorem, a certified box, or a proved phase boundary. Rows:
+  12 + 4 = 16.
+
+Accounting: 16 new rows; with Amendment 3 the preregistered total becomes
+3,230. Implementation obligation before execution: drivers
+`drive_crossover` and the comparator payload extension with pre-use tests;
+schema and expected totals updated. Affected: `lambda_noise` payload only;
+no reruns.
