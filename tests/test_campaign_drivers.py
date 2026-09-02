@@ -137,6 +137,21 @@ class TestNoiseDrivers(unittest.TestCase):
                     self.assertAlmostEqual(
                         float(r["residual_at_selection"]), target,
                         delta=1e-6 * target)
+            for r in table.values():
+                for key in ("E2_tikhonov_raw", "E2_tikhonov_projected"):
+                    self.assertTrue(math.isfinite(float(r[key])), key)
+                self.assertEqual(r["E2_tikhonov_raw"], r["E2_at_selection"])
+
+    def test_projection_is_nonnegative_and_mass_exact(self):
+        dx = 1.0 / 400
+        u = np.linspace(-0.5, 1.5, 400)
+        m0 = 0.8
+        p = drivers.project_positive_mass(u, m0, dx)
+        self.assertGreaterEqual(float(p.min()), 0.0)
+        self.assertAlmostEqual(float(dx * p.sum()), m0, places=12)
+        # already-feasible fields are fixed points
+        v = np.full(400, m0)
+        self.assertLess(float(np.max(np.abs(drivers.project_positive_mass(v, m0, dx) - v))), 1e-12)
 
 
 class TestClosureDriver(unittest.TestCase):
