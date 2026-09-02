@@ -87,6 +87,29 @@ DECOMP_RECONCILE_TOL = 1e-10
 CLOSURES = ("frozen_left", "mass")
 REFERENCE_KINDS = ("regularized", "unregularized")
 
+# Amendment 3: initial-rate diagnostic (Theorem R1; ledger 65-69).
+INITIAL_RATE_CASE = "G1"
+INITIAL_RATE_CLOSURE = "mass"
+INITIAL_RATE_TAU = 0.005                    # inside the certified [0, 0.0074]
+INITIAL_RATE_M_CERT = 0.1812                # Corollary R1b second-derivative bound
+INITIAL_RATE_GATE = 0.0074                  # (M/2) tau / c_rep, outward-rounded
+INITIAL_RATE_PAIR_GATE = 1e-4               # |e_fine - e_finer| / (c_rep tau)
+INITIAL_RATE_REFERENCES = ((6400, 6.25e-5), (12800, 3.125e-5))
+INITIAL_RATE_CARRIERS = ((200, 1e-3), (400, 5e-4), (800, 2.5e-4))
+INITIAL_RATE_Q_TAUS = (0.0125, 0.025, 0.05, 0.1, 0.2, 0.4)
+INITIAL_RATE_Q_RESOLUTION = (3200, 1.25e-4)
+
+# Amendment 4: crossover phenomenology block (evidence-grade; ledger 62-64).
+CROSSOVER_MODE = 3                          # u0 = 1 + a cos(3 pi x)
+CROSSOVER_ALPHA = 0.01
+CROSSOVER_T = 1.0
+CROSSOVER_EPS_REL = 1e-8
+CROSSOVER_A = (0.35, 0.50, 0.55, 0.60)
+CROSSOVER_KH = (0.23, 0.264, 0.29)
+CROSSOVER_PARTICLE_POINTS = ((0.35, 0.264), (0.60, 0.264))
+CROSSOVER_N = (4000, 10000)
+CROSSOVER_CONTINUUM = (1024, 150, 5e-4)     # cells, modes, dt (clean at h >= 0.024)
+
 # ---------------------------------------------------------------------------
 # Case registry (protocol Section 1 and Section 8)
 # ---------------------------------------------------------------------------
@@ -183,6 +206,20 @@ def document_binding_needles() -> tuple[str, ...]:
         f"(`h = {anchor_h('C1'):.3f}` for C1, `h = {anchor_h('Z'):.3f}` for Z)",
         f"(`h = {anchor_h('C1'):.3f}` for C1, `h = {anchor_h('H'):.3f}` for H)",
         f"`h = {anchor_h('C1'):.3f}` for the `T = 1` cases C1 and C2",
+        f"`tau = {INITIAL_RATE_TAU}`",
+        f"c_rep = {INITIAL_RATE_GATE}`",
+        f"c_rep tau) <= {_pow10(INITIAL_RATE_PAIR_GATE)}`",
+        "reference pair `" + ", ".join(f"({m}, {dt:g})"
+                                      for m, dt in INITIAL_RATE_REFERENCES) + "`",
+        "carrier ladder `" + ", ".join(f"({m}, {dt:g})"
+                                      for m, dt in INITIAL_RATE_CARRIERS) + "`",
+        f"`M = {INITIAL_RATE_Q_RESOLUTION[0]}, dt = "
+        f"{INITIAL_RATE_Q_RESOLUTION[1]:g}`",
+        "`a in {" + ", ".join(f"{a:.2f}" for a in CROSSOVER_A) + "}`",
+        "`kh in {" + ", ".join(str(k) for k in CROSSOVER_KH) + "}`",
+        "`N in {" + ", ".join(str(n) for n in CROSSOVER_N) + "}`",
+        f"`{CROSSOVER_CONTINUUM[0]}` collocation cells, `{CROSSOVER_CONTINUUM[1]}` "
+        f"modes, `dt = {CROSSOVER_CONTINUUM[2]:g}`",
     ) + tuple(f"**Arm {arm}" for arm in ARMS)
 
 
@@ -274,6 +311,40 @@ def rows_closure() -> list[dict]:
     return rows
 
 
+def rows_initial_rate() -> list[dict]:
+    """Amendment 3: Block A theorem-backed continuum references, Block B
+    evidence-grade carriers, Block C retained q-level table."""
+    rows = []
+    for m, dt in INITIAL_RATE_REFERENCES:
+        rows.append({"study": "initial_rate", "block": "reference",
+                     "case": INITIAL_RATE_CASE, "closure": INITIAL_RATE_CLOSURE,
+                     "M": m, "dt": dt, "tau": INITIAL_RATE_TAU})
+    for m, dt in INITIAL_RATE_CARRIERS:
+        rows.append({"study": "initial_rate", "block": "carrier",
+                     "case": INITIAL_RATE_CASE, "closure": INITIAL_RATE_CLOSURE,
+                     "M": m, "dt": dt, "tau": INITIAL_RATE_TAU})
+    m, dt = INITIAL_RATE_Q_RESOLUTION
+    for tau in INITIAL_RATE_Q_TAUS:
+        rows.append({"study": "initial_rate", "block": "q_level",
+                     "case": INITIAL_RATE_CASE, "closure": INITIAL_RATE_CLOSURE,
+                     "M": m, "dt": dt, "tau": tau})
+    return rows
+
+
+def rows_crossover() -> list[dict]:
+    """Amendment 4: prespecified continuum points and particle tracking."""
+    rows = []
+    for a in CROSSOVER_A:
+        for kh in CROSSOVER_KH:
+            rows.append({"study": "crossover", "block": "continuum",
+                         "a": a, "kh": kh, "N": None})
+    for a, kh in CROSSOVER_PARTICLE_POINTS:
+        for n in CROSSOVER_N:
+            rows.append({"study": "crossover", "block": "particle",
+                         "a": a, "kh": kh, "N": n})
+    return rows
+
+
 def rows_transition() -> list[dict]:
     return [{"study": "transition_table", "case": TRANSITION_CASE, "era": era}
             for era in ("endpoint_free_space_legacy",
@@ -290,6 +361,8 @@ STUDIES = {
     "lambda_noise": rows_lambda_noise,
     "closure": rows_closure,
     "transition_table": rows_transition,
+    "initial_rate": rows_initial_rate,
+    "crossover": rows_crossover,
 }
 
 

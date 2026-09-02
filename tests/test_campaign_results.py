@@ -19,7 +19,7 @@ import campaign_schema as schema  # noqa: E402
 class TestEnumeration(unittest.TestCase):
     def test_total_row_count_matches_preregistration(self):
         total = sum(schema.expected_counts().values())
-        self.assertEqual(total, 3203)
+        self.assertEqual(total, 3230)
 
     def test_row_keys_unique_within_each_study(self):
         for study in schema.STUDIES:
