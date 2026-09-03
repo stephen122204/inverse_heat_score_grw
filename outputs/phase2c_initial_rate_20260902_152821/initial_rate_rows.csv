@@ -1,0 +1,12 @@
+study,block,case,closure,M,dt,tau,status,censored,failure_step,failure_message,c_rep,e_U,e_q,gate_band,min_u,ratio,ratio_q,slope_q,u_diff_ref,within_band
+initial_rate,reference,G1,mass,6400,6.25e-05,0.005,completed,False,,,0.06138960831686842,0.00030706207850177017,nan,0.0074,1.0939819987889563,1.0003715186350088,nan,nan,nan,True
+initial_rate,reference,G1,mass,12800,3.125e-05,0.005,completed,False,,,0.06138960831686842,0.0003070480286109074,nan,0.0074,1.0939819578555425,1.0003257457713337,nan,nan,nan,True
+initial_rate,carrier,G1,mass,200,0.001,0.005,completed,False,,,nan,nan,nan,nan,1.0940098879417808,nan,nan,nan,7.441458482249563e-05,nan
+initial_rate,carrier,G1,mass,400,0.0005,0.005,completed,False,,,nan,nan,nan,nan,1.0939889301706862,nan,nan,nan,7.53403237994033e-05,nan
+initial_rate,carrier,G1,mass,800,0.00025,0.005,completed,False,,,nan,nan,nan,nan,1.0939836907026628,nan,nan,nan,7.562042692478292e-05,nan
+initial_rate,q_level,G1,mass,3200,0.000125,0.0125,completed,False,,,nan,nan,0.002631484400834075,nan,1.0939821625225792,nan,1.000648230559943,0.21038237578147106,nan,nan
+initial_rate,q_level,G1,mass,3200,0.000125,0.025,completed,False,,,nan,nan,0.00526638103213969,nan,1.0939821625225792,nan,1.0012969979215367,0.21038237578147106,nan,nan
+initial_rate,q_level,G1,mass,3200,0.000125,0.05,completed,False,,,nan,nan,0.010546426547163352,nan,1.0939821625225792,nan,1.0025960119509405,0.21038237578147106,nan,nan
+initial_rate,q_level,G1,mass,3200,0.000125,0.1,completed,False,,,nan,nan,0.02114763576669083,nan,1.0939821625225792,nan,1.0051999692530023,0.21038237578147106,nan,nan
+initial_rate,q_level,G1,mass,3200,0.000125,0.2,completed,False,,,nan,nan,0.042515404224724204,nan,1.0939821625225792,nan,1.0104316976837906,0.21038237578147106,nan,nan
+initial_rate,q_level,G1,mass,3200,0.000125,0.4,completed,False,,,nan,nan,0.085919420937595,nan,1.0939821625225792,nan,1.0209911906646763,0.21038237578147106,nan,nan

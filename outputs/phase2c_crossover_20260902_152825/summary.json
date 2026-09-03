@@ -1,0 +1,18 @@
+{
+ "accounting": {
+  "attempted_rows": 16,
+  "censored_rows": 0,
+  "completed_rows": 16,
+  "consistent": true,
+  "duplicate_rows": [],
+  "expected_rows": 16,
+  "failed_rows": 0,
+  "missing_rows": [],
+  "study": "crossover",
+  "unexpected_rows": []
+ },
+ "gates": "none by design (evidence-grade)",
+ "verdicts": {
+  "accounting_consistent": true
+ }
+}

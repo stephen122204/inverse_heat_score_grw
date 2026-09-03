@@ -1,0 +1,309 @@
+{
+  "abandoned_directories": [
+    "outputs/phase2c_noise_paired_20260902_164112 (job killed at 111/2114 rows; superseded; never a data source)"
+  ],
+  "accounting_totals": {
+    "attempted_rows": 3230,
+    "censored_rows": 68,
+    "completed_rows": 3224,
+    "expected_rows": 3230,
+    "failed_rows": 6
+  },
+  "code_commit": "688afc7f47435e066ed5507f28ed6e0978352ada",
+  "commands": [
+    {
+      "argv": [
+        "scripts/run_science_campaign.py",
+        "--run",
+        "bandwidth_clean"
+      ],
+      "study": "bandwidth_clean"
+    },
+    {
+      "argv": [
+        "scripts/run_science_campaign.py",
+        "--run",
+        "epsilon_sensitivity"
+      ],
+      "study": "epsilon_sensitivity"
+    },
+    {
+      "argv": [
+        "scripts/run_science_campaign.py",
+        "--run",
+        "adequacy_N"
+      ],
+      "study": "adequacy_N"
+    },
+    {
+      "argv": [
+        "scripts/run_science_campaign.py",
+        "--run",
+        "noise_paired"
+      ],
+      "study": "noise_paired"
+    },
+    {
+      "argv": [
+        "scripts/run_science_campaign.py",
+        "--run",
+        "lambda_oracle_clean"
+      ],
+      "study": "lambda_oracle_clean"
+    },
+    {
+      "argv": [
+        "scripts/run_science_campaign.py",
+        "--run",
+        "lambda_noise"
+      ],
+      "study": "lambda_noise"
+    },
+    {
+      "argv": [
+        "scripts/run_science_campaign.py",
+        "--run",
+        "closure"
+      ],
+      "study": "closure"
+    },
+    {
+      "argv": [
+        "scripts/run_science_campaign.py",
+        "--run",
+        "transition_table"
+      ],
+      "study": "transition_table"
+    },
+    {
+      "argv": [
+        "scripts/run_science_campaign.py",
+        "--run",
+        "initial_rate"
+      ],
+      "study": "initial_rate"
+    },
+    {
+      "argv": [
+        "scripts/run_science_campaign.py",
+        "--run",
+        "crossover"
+      ],
+      "study": "crossover"
+    }
+  ],
+  "created_utc": "2026-09-03T00:50:07.204174+00:00",
+  "environment": {
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "python": "3.11.4"
+  },
+  "frozen_code_tag": "phase2c-frozen-v1 (688afc7)",
+  "gate_verdicts": {
+    "adequacy_N": {
+      "adequacy_C1": true,
+      "adequacy_H": true,
+      "adequacy_mass_C1": true,
+      "adequacy_mass_H": true
+    },
+    "bandwidth_clean": {},
+    "closure": {
+      "decomposition_reconciled_G1_frozen_left": true,
+      "decomposition_reconciled_G1_mass": true,
+      "decomposition_reconciled_G2_frozen_left": true,
+      "decomposition_reconciled_G2_mass": true,
+      "decomposition_reconciled_GB_frozen_left": true,
+      "decomposition_reconciled_GB_mass": true,
+      "h_bridge_G1_frozen_left": true,
+      "h_bridge_G1_mass": true,
+      "h_bridge_G2_frozen_left": true,
+      "h_bridge_G2_mass": true,
+      "h_bridge_GB_frozen_left": true,
+      "h_bridge_GB_mass": true,
+      "reference_gate_G1_frozen_left_regularized": true,
+      "reference_gate_G1_frozen_left_unregularized": true,
+      "reference_gate_G1_mass_regularized": true,
+      "reference_gate_G1_mass_unregularized": true,
+      "reference_gate_G2_frozen_left_regularized": true,
+      "reference_gate_G2_frozen_left_unregularized": true,
+      "reference_gate_G2_mass_regularized": true,
+      "reference_gate_G2_mass_unregularized": true,
+      "reference_gate_GB_frozen_left_regularized": false,
+      "reference_gate_GB_frozen_left_unregularized": false,
+      "reference_gate_GB_mass_regularized": true,
+      "reference_gate_GB_mass_unregularized": true,
+      "refinement_G1_frozen_left": false,
+      "refinement_G1_mass": false,
+      "refinement_G2_frozen_left": false,
+      "refinement_G2_mass": false,
+      "refinement_GB_frozen_left": false,
+      "refinement_GB_mass": false,
+      "split_G1_frozen_left": true,
+      "split_G1_mass": true,
+      "split_G2_frozen_left": true,
+      "split_G2_mass": true,
+      "split_GB_frozen_left": true,
+      "split_GB_mass": true
+    },
+    "crossover": {},
+    "epsilon_sensitivity": {},
+    "initial_rate": {
+      "block_a_reference_pair_defect_relative": true,
+      "block_a_within_certificate_band": true
+    },
+    "lambda_noise": {
+      "no_morozov_labels_on_failed_rows": true
+    },
+    "lambda_oracle_clean": {},
+    "noise_paired": {},
+    "transition_table": {}
+  },
+  "noise_paired_incomplete_selection_blocks": 0,
+  "preregistered_failure_reports": [
+    "closure: 6 failed rows = GB frozen_left at M=1600, loss of positivity of U (reference_gate_GB_frozen_left_* = False)",
+    "closure: carrier refinement gate fails for all cases/closures on q (binned-q sawtooth, ledger 21); u refines at second order",
+    "initial_rate Block B: carrier error refinement-independent (fixed-h consistency floor), evidence-grade, expectation of monotone decrease not met"
+  ],
+  "protocol_status": "FROZEN with Amendments 1-4 (committed before any row ran)",
+  "run_id": "phase2c_campaign_20260902",
+  "schema_version": 1,
+  "studies": {
+    "adequacy_N": {
+      "path": "outputs/phase2c_adequacy_N_20260902_153211",
+      "required_files": [
+        "adequacy_N_rows.csv",
+        "run_manifest.json",
+        "summary.json"
+      ],
+      "sha256": {
+        "adequacy_N_rows.csv": "44de25a3d063add6f0717de0c81ac9ce264465360c2e1a9fd1cd4735a78223ce",
+        "run_manifest.json": "f8ae1a79b6481aa20b9f2a2579be1c83a5a0638b143413064378dd8f24738456",
+        "summary.json": "e9551ba472cc7c4f1b103f315dbd567a62891317638c748a5287ab6ee6fc2239"
+      }
+    },
+    "bandwidth_clean": {
+      "path": "outputs/phase2c_bandwidth_clean_20260902_163336",
+      "required_files": [
+        "bandwidth_clean_rows.csv",
+        "run_manifest.json",
+        "summary.json"
+      ],
+      "sha256": {
+        "bandwidth_clean_rows.csv": "715d15458954378ec60f00a8108d75e70b97f8bf74df50f2ed7b97040510a925",
+        "run_manifest.json": "019fb78891c50da549518d4e1c17e0b0b3895608f0e704166278626a1a7778c5",
+        "summary.json": "3bc9980f3325c83b6685fd8e3039a50ed191b6d205fcf988869ca0dc944acd70"
+      }
+    },
+    "closure": {
+      "path": "outputs/phase2c_closure_20260902_154815",
+      "required_files": [
+        "closure_decomposition.json",
+        "closure_gates.json",
+        "closure_rows.csv",
+        "run_manifest.json",
+        "summary.json"
+      ],
+      "sha256": {
+        "closure_decomposition.json": "906fcc1c9b8dd99d9b0f3593e08ba2bb865daa77d9fdaa88091e364acd428873",
+        "closure_gates.json": "7155590e42d7b46499dcdb11b685672ae6d14c0d46995c27dcda38c8b3933ba7",
+        "closure_rows.csv": "7032ad4f7a8f94cc9b19b384968bc782ce58a4387c20db5587de745c9c3be6e5",
+        "run_manifest.json": "7ddcbf6a11dc49c60e63df4ebd239d0bdc47768628c389fcf780721b08c8a461",
+        "summary.json": "a8403df09c9ae6486b5837c12c32215cbb85c5fe0cd59dea39b1515a77a7a599"
+      }
+    },
+    "crossover": {
+      "path": "outputs/phase2c_crossover_20260902_152825",
+      "required_files": [
+        "crossover_rows.csv",
+        "run_manifest.json",
+        "summary.json"
+      ],
+      "sha256": {
+        "crossover_rows.csv": "81b5942d00a21081733d4a130b83ad73a88cd0ec85b9bde88b0fde88fd43458d",
+        "run_manifest.json": "1e9c2d324a92b30c4e1ab5d4b4d7ee73fc29f36df593e4ba33d21a53a8c097ea",
+        "summary.json": "b1a2724b4847197eefcc7c6245aa3643f9687213f29bc02c59588fb4a057b640"
+      }
+    },
+    "epsilon_sensitivity": {
+      "path": "outputs/phase2c_epsilon_sensitivity_20260902_154144",
+      "required_files": [
+        "epsilon_sensitivity_rows.csv",
+        "run_manifest.json",
+        "summary.json"
+      ],
+      "sha256": {
+        "epsilon_sensitivity_rows.csv": "8d794a090820f057dd4f32567c2bf597e0e000d40fe098141a4fa5733a0a43ae",
+        "run_manifest.json": "59340254654121ae31defffa8a67d07e78046958bb83fda43803da3191f6043f",
+        "summary.json": "bd71b0a30fcf5826d3b5e40b1f3716207956d176bc92c6bfb04b773e19a82994"
+      }
+    },
+    "initial_rate": {
+      "path": "outputs/phase2c_initial_rate_20260902_152821",
+      "required_files": [
+        "initial_rate_gates.json",
+        "initial_rate_rows.csv",
+        "run_manifest.json",
+        "summary.json"
+      ],
+      "sha256": {
+        "initial_rate_gates.json": "2875ed353dc112a94a2272499a5796a6a6025f963d8d25f294e5ad5ea8ccf0ee",
+        "initial_rate_rows.csv": "2527742e41182441df8a0af183b305cfa5cc9906f4595e647c974d5e95151933",
+        "run_manifest.json": "bfdb4b6115c2f979a3bcec7cd24670a0e467c7d6a7320f31e02cddf8f764ee7d",
+        "summary.json": "7f06584206be7edcdd747e9c045692c27bb6d260b6dae26768d659eb8e75bdc7"
+      }
+    },
+    "lambda_noise": {
+      "path": "outputs/phase2c_lambda_noise_20260902_164109",
+      "required_files": [
+        "lambda_noise_rows.csv",
+        "run_manifest.json",
+        "summary.json"
+      ],
+      "sha256": {
+        "lambda_noise_rows.csv": "72e7938cb5b068afbe4dee29fa414137a6a56c1c9950f65d01c7217b23f5fcd6",
+        "run_manifest.json": "71f49d27a724143093569c4541f51fbaa51d0a026e5eb69dca77cdc29e1f4dd1",
+        "summary.json": "13959182b19b8c3c3e493e2760c618a836c5899862d1a7baf9c1f7b13b30c1d6"
+      }
+    },
+    "lambda_oracle_clean": {
+      "path": "outputs/phase2c_lambda_oracle_clean_20260902_164059",
+      "required_files": [
+        "lambda_oracle_clean_rows.csv",
+        "run_manifest.json",
+        "summary.json"
+      ],
+      "sha256": {
+        "lambda_oracle_clean_rows.csv": "9bfe778fb3784d5810bb7f3f313481c646b5eff9db533fad996a1cdf46425011",
+        "run_manifest.json": "f088926af2e7d86e979f8528359c3296117c22eb91b93e7e5c5deb05eda5e111",
+        "summary.json": "333b011306c1cc59584d6f2f21854a124bace46256ff3c47fab95cb008283216"
+      }
+    },
+    "noise_paired": {
+      "path": "outputs/phase2c_noise_paired_20260902_171844",
+      "required_files": [
+        "bandwidth_selection.json",
+        "noise_paired_rows.csv",
+        "run_manifest.json",
+        "summary.json"
+      ],
+      "sha256": {
+        "bandwidth_selection.json": "e80f689b171f6726a78d210d10a6e23c5b1223057e155bdc30be33499a5cb9e9",
+        "noise_paired_rows.csv": "af5d619d5be227843670d81b61aef121213942858ba38751828e6245b3781ca1",
+        "run_manifest.json": "da6736245fde1c576dc45bfa58566d45130086cd397d0d694fdf74286e20fd60",
+        "summary.json": "74b0f76eb9186ef96f1b44122eebf4c1cd0313a74e8eb72a1e37b8ede532cda9"
+      }
+    },
+    "transition_table": {
+      "path": "outputs/phase2c_transition_table_20260902_152856",
+      "required_files": [
+        "run_manifest.json",
+        "summary.json",
+        "transition_table_rows.csv"
+      ],
+      "sha256": {
+        "run_manifest.json": "a7987e623279c0ec16b194685acac10dc52b60549c940f8199dd5ccc328ded7f",
+        "summary.json": "4784459d3e3c3dd15d0f73274e209e891eb6f1533914834e815e51b304f4920d",
+        "transition_table_rows.csv": "d08d5154187f3613c360fa3c8f8692e6c891d004d04ee75f229ab01efe0e013c"
+      }
+    }
+  }
+}

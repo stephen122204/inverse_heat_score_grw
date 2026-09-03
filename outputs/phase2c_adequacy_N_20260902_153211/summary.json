@@ -1,0 +1,21 @@
+{
+ "accounting": {
+  "attempted_rows": 10,
+  "censored_rows": 0,
+  "completed_rows": 10,
+  "consistent": true,
+  "duplicate_rows": [],
+  "expected_rows": 10,
+  "failed_rows": 0,
+  "missing_rows": [],
+  "study": "adequacy_N",
+  "unexpected_rows": []
+ },
+ "verdicts": {
+  "accounting_consistent": true,
+  "adequacy_C1": true,
+  "adequacy_H": true,
+  "adequacy_mass_C1": true,
+  "adequacy_mass_H": true
+ }
+}

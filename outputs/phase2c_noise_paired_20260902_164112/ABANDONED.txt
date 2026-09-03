@@ -1,0 +1,1 @@
+abandoned: job killed mid-run at 111/2114 rows; superseded by the fresh full run; never pin this directory

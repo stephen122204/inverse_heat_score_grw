@@ -1,0 +1,19 @@
+{
+ "accounting": {
+  "attempted_rows": 11,
+  "censored_rows": 0,
+  "completed_rows": 11,
+  "consistent": true,
+  "duplicate_rows": [],
+  "expected_rows": 11,
+  "failed_rows": 0,
+  "missing_rows": [],
+  "study": "initial_rate",
+  "unexpected_rows": []
+ },
+ "verdicts": {
+  "accounting_consistent": true,
+  "block_a_reference_pair_defect_relative": true,
+  "block_a_within_certificate_band": true
+ }
+}

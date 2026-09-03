@@ -1,0 +1,33 @@
+{
+  "code_commit": "688afc7f47435e066ed5507f28ed6e0978352ada",
+  "commands": [
+    {
+      "argv": [
+        "scripts/run_science_campaign.py",
+        "--run",
+        "bandwidth_clean"
+      ],
+      "study": "bandwidth_clean"
+    }
+  ],
+  "created_utc": "2026-09-02T16:40:59.425383+00:00",
+  "environment": {
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "python": "3.11.4"
+  },
+  "run_id": "phase2c_bandwidth_clean_20260902_163336",
+  "schema_version": 1,
+  "studies": {
+    "bandwidth_clean": {
+      "path": "outputs/phase2c_bandwidth_clean_20260902_163336",
+      "required_files": [
+        "bandwidth_clean_rows.csv",
+        "summary.json"
+      ],
+      "sha256": {
+        "bandwidth_clean_rows.csv": "715d15458954378ec60f00a8108d75e70b97f8bf74df50f2ed7b97040510a925",
+        "summary.json": "3bc9980f3325c83b6685fd8e3039a50ed191b6d205fcf988869ca0dc944acd70"
+      }
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "code_commit": "688afc7f47435e066ed5507f28ed6e0978352ada",
+  "commands": [
+    {
+      "argv": [
+        "scripts/run_science_campaign.py",
+        "--run",
+        "noise_paired"
+      ],
+      "study": "noise_paired"
+    }
+  ],
+  "created_utc": "2026-09-03T00:31:05.382456+00:00",
+  "environment": {
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "python": "3.11.4"
+  },
+  "run_id": "phase2c_noise_paired_20260902_171844",
+  "schema_version": 1,
+  "studies": {
+    "noise_paired": {
+      "path": "outputs/phase2c_noise_paired_20260902_171844",
+      "required_files": [
+        "bandwidth_selection.json",
+        "noise_paired_rows.csv",
+        "summary.json"
+      ],
+      "sha256": {
+        "bandwidth_selection.json": "e80f689b171f6726a78d210d10a6e23c5b1223057e155bdc30be33499a5cb9e9",
+        "noise_paired_rows.csv": "af5d619d5be227843670d81b61aef121213942858ba38751828e6245b3781ca1",
+        "summary.json": "74b0f76eb9186ef96f1b44122eebf4c1cd0313a74e8eb72a1e37b8ede532cda9"
+      }
+    }
+  }
+}

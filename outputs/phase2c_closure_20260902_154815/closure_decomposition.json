@@ -1,0 +1,553 @@
+{
+ "commit": "688afc7f47435e066ed5507f28ed6e0978352ada",
+ "cases": [
+  {
+   "case": "G1",
+   "closure": "frozen_left",
+   "status": "ok",
+   "times": {
+    "half": {
+     "reverse_time": 0.5,
+     "u": {
+      "total_norm": 0.03346072365524785,
+      "component_norms": {
+       "wrong_transport": 0.031661336643569064,
+       "closure": 0.010723956632286284,
+       "score_regularization": 1.4957749845817778e-05,
+       "particle_discretization": 0.0012291317614426807
+      },
+      "inner_products": {
+       "wrong_transport|closure": -1.4244445360771192e-07,
+       "wrong_transport|score_regularization": 4.071559125162545e-08,
+       "wrong_transport|particle_discretization": 9.241324958422927e-07,
+       "closure|score_regularization": -1.2982722896852804e-07,
+       "closure|particle_discretization": -3.6109440066741467e-07,
+       "score_regularization|particle_discretization": 1.295497664371138e-09
+      },
+      "reconciliation_residual": 0.0,
+      "identity_max_abs": 0.0
+     },
+     "q": {
+      "total_norm": 0.25714633937661613,
+      "component_norms": {
+       "wrong_transport": 0.10795929160106889,
+       "closure": 0.00015839166171498106,
+       "score_regularization": 5.7859805165633984e-05,
+       "particle_discretization": 0.2330868501138842
+      },
+      "inner_products": {
+       "wrong_transport|closure": 4.1045658857872725e-06,
+       "wrong_transport|score_regularization": -1.6415181009715863e-06,
+       "wrong_transport|particle_discretization": 6.705093920830491e-05,
+       "closure|score_regularization": -9.11500895502008e-09,
+       "closure|particle_discretization": 4.3804432524734817e-07,
+       "score_regularization|particle_discretization": -1.8137625874933781e-07
+      },
+      "reconciliation_residual": 0.0,
+      "identity_max_abs": 0.0
+     }
+    },
+    "final": {
+     "reverse_time": 1.0,
+     "u": {
+      "total_norm": 0.0687089560513697,
+      "component_norms": {
+       "wrong_transport": 0.06530014960255624,
+       "closure": 0.021480536131837098,
+       "score_regularization": 2.9766796156036056e-05,
+       "particle_discretization": 0.0014131453364263592
+      },
+      "inner_products": {
+       "wrong_transport|closure": -8.90416735328226e-07,
+       "wrong_transport|score_regularization": 7.339976418804925e-08,
+       "wrong_transport|particle_discretization": 3.3968295487836582e-06,
+       "closure|score_regularization": -5.123755432922617e-07,
+       "closure|particle_discretization": -5.380313884217724e-06,
+       "score_regularization|particle_discretization": 1.27794686930524e-08
+      },
+      "reconciliation_residual": 5.511817315881123e-16,
+      "identity_max_abs": 0.0
+     },
+     "q": {
+      "total_norm": 0.3745521254030969,
+      "component_norms": {
+       "wrong_transport": 0.2216273013464943,
+       "closure": 0.0006264431092287566,
+       "score_regularization": 0.00011640540679481311,
+       "particle_discretization": 0.30150970043398
+      },
+      "inner_products": {
+       "wrong_transport|closure": 3.52007911976585e-05,
+       "wrong_transport|score_regularization": -7.603011324657184e-06,
+       "wrong_transport|particle_discretization": 0.00010254103588568264,
+       "closure|score_regularization": -7.190896912222871e-08,
+       "closure|particle_discretization": 1.268504191040641e-06,
+       "score_regularization|particle_discretization": -2.711585450012057e-07
+      },
+      "reconciliation_residual": 3.956905719152176e-16,
+      "identity_max_abs": 0.0
+     }
+    }
+   },
+   "reconciled": true
+  },
+  {
+   "case": "G1",
+   "closure": "mass",
+   "status": "ok",
+   "times": {
+    "half": {
+     "reverse_time": 0.5,
+     "u": {
+      "total_norm": 0.03171292759033029,
+      "component_norms": {
+       "wrong_transport": 0.031661336643569064,
+       "closure": 0.0,
+       "score_regularization": 8.748867388173392e-06,
+       "particle_discretization": 0.0012262795442402037
+      },
+      "inner_products": {
+       "wrong_transport|closure": 0.0,
+       "wrong_transport|score_regularization": 4.0094745685017406e-08,
+       "wrong_transport|particle_discretization": 8.419871809982728e-07,
+       "closure|score_regularization": 0.0,
+       "closure|particle_discretization": 0.0,
+       "score_regularization|particle_discretization": 7.681877270187902e-10
+      },
+      "reconciliation_residual": 2.1560935331082874e-16,
+      "identity_max_abs": 0.0
+     },
+     "q": {
+      "total_norm": 0.2576226251871704,
+      "component_norms": {
+       "wrong_transport": 0.10795929160106889,
+       "closure": 0.0,
+       "score_regularization": 5.7432188906592986e-05,
+       "particle_discretization": 0.2336574489454662
+      },
+      "inner_products": {
+       "wrong_transport|closure": 0.0,
+       "wrong_transport|score_regularization": -1.6335082089651286e-06,
+       "wrong_transport|particle_discretization": 6.101072012221764e-05,
+       "closure|score_regularization": 0.0,
+       "closure|particle_discretization": 0.0,
+       "score_regularization|particle_discretization": -1.76402330665458e-07
+      },
+      "reconciliation_residual": 4.1819827364380225e-16,
+      "identity_max_abs": 0.0
+     }
+    },
+    "final": {
+     "reverse_time": 1.0,
+     "u": {
+      "total_norm": 0.06537278460603137,
+      "component_norms": {
+       "wrong_transport": 0.06530014960255624,
+       "closure": 0.0,
+       "score_regularization": 1.7661843438265982e-05,
+       "particle_discretization": 0.001352851937011779
+      },
+      "inner_products": {
+       "wrong_transport|closure": 0.0,
+       "wrong_transport|score_regularization": 7.00782789789533e-08,
+       "wrong_transport|particle_discretization": 3.7550354067254464e-06,
+       "closure|score_regularization": 0.0,
+       "closure|particle_discretization": 0.0,
+       "score_regularization|particle_discretization": 5.340677373376482e-09
+      },
+      "reconciliation_residual": 0.0,
+      "identity_max_abs": 0.0
+     },
+     "q": {
+      "total_norm": 0.37548472753610174,
+      "component_norms": {
+       "wrong_transport": 0.2216273013464943,
+       "closure": 0.0,
+       "score_regularization": 0.00011472199402124094,
+       "particle_discretization": 0.3028159869832572
+      },
+      "inner_products": {
+       "wrong_transport|closure": 0.0,
+       "wrong_transport|score_regularization": -7.520268145471512e-06,
+       "wrong_transport|particle_discretization": 9.410062370473052e-05,
+       "closure|score_regularization": 0.0,
+       "closure|particle_discretization": 0.0,
+       "score_regularization|particle_discretization": -2.879670839153631e-07
+      },
+      "reconciliation_residual": 0.0,
+      "identity_max_abs": 0.0
+     }
+    }
+   },
+   "reconciled": true
+  },
+  {
+   "case": "G2",
+   "closure": "frozen_left",
+   "status": "ok",
+   "times": {
+    "half": {
+     "reverse_time": 0.5,
+     "u": {
+      "total_norm": 0.024776118148623433,
+      "component_norms": {
+       "wrong_transport": 0.024344044546816962,
+       "closure": 0.004591174435389427,
+       "score_regularization": 1.5022724419229862e-05,
+       "particle_discretization": 0.0005839825182661884
+      },
+      "inner_products": {
+       "wrong_transport|closure": -1.0852628103948952e-08,
+       "wrong_transport|score_regularization": -7.263214078782142e-08,
+       "wrong_transport|particle_discretization": 1.5230524695756601e-07,
+       "closure|score_regularization": -4.4710109526979205e-08,
+       "closure|particle_discretization": -1.2274485724096922e-07,
+       "score_regularization|particle_discretization": 3.2531724007034533e-10
+      },
+      "reconciliation_residual": 0.0,
+      "identity_max_abs": 0.0
+     },
+     "q": {
+      "total_norm": 0.1915797781959488,
+      "component_norms": {
+       "wrong_transport": 0.1287142782556843,
+       "closure": 7.586897153540674e-05,
+       "score_regularization": 9.324695583460903e-05,
+       "particle_discretization": 0.14194033327244657
+      },
+      "inner_products": {
+       "wrong_transport|closure": -1.8740646737631958e-06,
+       "wrong_transport|score_regularization": -1.309557596377412e-06,
+       "wrong_transport|particle_discretization": -2.5783302154777642e-06,
+       "closure|score_regularization": -6.259400873137335e-09,
+       "closure|particle_discretization": 1.4258521357288015e-07,
+       "score_regularization|particle_discretization": -1.8771025788582071e-07
+      },
+      "reconciliation_residual": 0.0,
+      "identity_max_abs": 2.7755575615628914e-17
+     }
+    },
+    "final": {
+     "reverse_time": 1.0,
+     "u": {
+      "total_norm": 0.053653715391362114,
+      "component_norms": {
+       "wrong_transport": 0.05286376114367206,
+       "closure": 0.009196542086890643,
+       "score_regularization": 3.036414436661872e-05,
+       "particle_discretization": 0.0006641542868903034
+      },
+      "inner_products": {
+       "wrong_transport|closure": -6.03865759480148e-08,
+       "wrong_transport|score_regularization": -3.826459138257709e-07,
+       "wrong_transport|particle_discretization": 7.861214226922875e-07,
+       "closure|score_regularization": -1.772770875317912e-07,
+       "closure|particle_discretization": -6.077553239043834e-07,
+       "score_regularization|particle_discretization": 4.705372551177858e-09
+      },
+      "reconciliation_residual": 1.5065052937939195e-16,
+      "identity_max_abs": 0.0
+     },
+     "q": {
+      "total_norm": 0.337433550706991,
+      "component_norms": {
+       "wrong_transport": 0.28561996979388865,
+       "closure": 0.0003037052107875989,
+       "score_regularization": 0.00019310081198227813,
+       "particle_discretization": 0.18013858553768636
+      },
+      "inner_products": {
+       "wrong_transport|closure": -1.5185945130470981e-05,
+       "wrong_transport|score_regularization": -7.910379939315351e-06,
+       "wrong_transport|particle_discretization": -6.077913996673942e-05,
+       "closure|score_regularization": -5.080642426787257e-08,
+       "closure|particle_discretization": 5.086018194357552e-07,
+       "score_regularization|particle_discretization": -2.850936743529459e-07
+      },
+      "reconciliation_residual": 3.6564949144842463e-16,
+      "identity_max_abs": 5.551115123125783e-17
+     }
+    }
+   },
+   "reconciled": true
+  },
+  {
+   "case": "G2",
+   "closure": "mass",
+   "status": "ok",
+   "times": {
+    "half": {
+     "reverse_time": 0.5,
+     "u": {
+      "total_norm": 0.02435386290099346,
+      "component_norms": {
+       "wrong_transport": 0.024344044546816962,
+       "closure": 0.0,
+       "score_regularization": 1.1413301850622735e-05,
+       "particle_discretization": 0.0005834806376018316
+      },
+      "inner_products": {
+       "wrong_transport|closure": 0.0,
+       "wrong_transport|score_regularization": -7.257560807191444e-08,
+       "wrong_transport|particle_discretization": 1.4139608613718e-07,
+       "closure|score_regularization": 0.0,
+       "closure|particle_discretization": 0.0,
+       "score_regularization|particle_discretization": -4.3785534454850416e-11
+      },
+      "reconciliation_residual": 0.0,
+      "identity_max_abs": 0.0
+     },
+     "q": {
+      "total_norm": 0.1915797781959488,
+      "component_norms": {
+       "wrong_transport": 0.1287142782556843,
+       "closure": 0.0,
+       "score_regularization": 9.28921812591961e-05,
+       "particle_discretization": 0.14194135137095
+      },
+      "inner_products": {
+       "wrong_transport|closure": 0.0,
+       "wrong_transport|score_regularization": -1.3129626871975194e-06,
+       "wrong_transport|particle_discretization": -4.448989798420122e-06,
+       "closure|score_regularization": 0.0,
+       "closure|particle_discretization": 0.0,
+       "score_regularization|particle_discretization": -1.9298313519149955e-07
+      },
+      "reconciliation_residual": 0.0,
+      "identity_max_abs": 2.7755575615628914e-17
+     }
+    },
+    "final": {
+     "reverse_time": 1.0,
+     "u": {
+      "total_norm": 0.052870441422663096,
+      "component_norms": {
+       "wrong_transport": 0.05286376114367206,
+       "closure": 0.0,
+       "score_regularization": 2.3354167215680786e-05,
+       "particle_discretization": 0.0006486846836894195
+      },
+      "inner_products": {
+       "wrong_transport|closure": 0.0,
+       "wrong_transport|score_regularization": -3.81327121750054e-07,
+       "wrong_transport|particle_discretization": 5.206538210551689e-07,
+       "closure|score_regularization": 0.0,
+       "closure|particle_discretization": 0.0,
+       "score_regularization|particle_discretization": 3.171668724189865e-09
+      },
+      "reconciliation_residual": 1.5514736060501381e-16,
+      "identity_max_abs": 0.0
+     },
+     "q": {
+      "total_norm": 0.3378806925648042,
+      "component_norms": {
+       "wrong_transport": 0.28561996979388865,
+       "closure": 0.0,
+       "score_regularization": 0.00019165009900637251,
+       "particle_discretization": 0.18080070018135094
+      },
+      "inner_products": {
+       "wrong_transport|closure": 0.0,
+       "wrong_transport|score_regularization": -7.911951411489416e-06,
+       "wrong_transport|particle_discretization": -4.3990232102475434e-05,
+       "closure|score_regularization": 0.0,
+       "closure|particle_discretization": 0.0,
+       "score_regularization|particle_discretization": -2.6514289471431783e-07
+      },
+      "reconciliation_residual": 0.0,
+      "identity_max_abs": 5.551115123125783e-17
+     }
+    }
+   },
+   "reconciled": true
+  },
+  {
+   "case": "GB",
+   "closure": "frozen_left",
+   "status": "ok",
+   "times": {
+    "half": {
+     "reverse_time": 0.075,
+     "u": {
+      "total_norm": 0.029422211801109537,
+      "component_norms": {
+       "wrong_transport": 0.02508313213074498,
+       "closure": 0.016740005003469973,
+       "score_regularization": 0.0005957969663520338,
+       "particle_discretization": 0.0017258972230909978
+      },
+      "inner_products": {
+       "wrong_transport|closure": -1.2257563312648228e-05,
+       "wrong_transport|score_regularization": -3.5330475074583426e-06,
+       "wrong_transport|particle_discretization": -7.950511709729497e-07,
+       "closure|score_regularization": -6.683609285848701e-06,
+       "closure|particle_discretization": -2.8061063724875357e-07,
+       "score_regularization|particle_discretization": 2.0665421652456878e-08
+      },
+      "reconciliation_residual": 1.2524478113489565e-16,
+      "identity_max_abs": 3.469446951953614e-18
+     },
+     "q": {
+      "total_norm": 0.7200363033542946,
+      "component_norms": {
+       "wrong_transport": 0.24774093860812885,
+       "closure": 0.019458438548845863,
+       "score_regularization": 0.007236042172687549,
+       "particle_discretization": 0.6789821840446391
+      },
+      "inner_products": {
+       "wrong_transport|closure": -0.002885803163668228,
+       "wrong_transport|score_regularization": 0.0006571209254090202,
+       "wrong_transport|particle_discretization": 5.88113693808035e-05,
+       "closure|score_regularization": -8.513456970254673e-06,
+       "closure|particle_discretization": -5.546735379366914e-06,
+       "score_regularization|particle_discretization": -1.6148894875759956e-06
+      },
+      "reconciliation_residual": 2.1414179692503433e-16,
+      "identity_max_abs": 1.734723475976807e-18
+     }
+    },
+    "final": {
+     "reverse_time": 0.15,
+     "u": {
+      "total_norm": 0.06501209108953056,
+      "component_norms": {
+       "wrong_transport": 0.05695422921739735,
+       "closure": 0.03543303342416096,
+       "score_regularization": 0.0015305049479026028,
+       "particle_discretization": 0.0016391389374439836
+      },
+      "inner_products": {
+       "wrong_transport|closure": -8.140054300251384e-05,
+       "wrong_transport|score_regularization": -2.1544154556527965e-05,
+       "wrong_transport|particle_discretization": 5.478330506917949e-07,
+       "closure|score_regularization": -3.646919402606688e-05,
+       "closure|particle_discretization": -5.9957537806508604e-09,
+       "score_regularization|particle_discretization": 1.395586233890919e-09
+      },
+      "reconciliation_residual": 2.0521636458226317e-16,
+      "identity_max_abs": 6.938893903907228e-18
+     },
+     "q": {
+      "total_norm": 1.0907247019218236,
+      "component_norms": {
+       "wrong_transport": 0.6333471137374813,
+       "closure": 0.07878734129129214,
+       "score_regularization": 0.020601194445080333,
+       "particle_discretization": 0.9168454254032281
+      },
+      "inner_products": {
+       "wrong_transport|closure": -0.034314810818464374,
+       "wrong_transport|score_regularization": 0.00496051063288571,
+       "wrong_transport|particle_discretization": 0.00036893609945376564,
+       "closure|score_regularization": -0.0003923918039287673,
+       "closure|particle_discretization": -1.3906406138549665e-05,
+       "score_regularization|particle_discretization": 4.887252604814799e-05
+      },
+      "reconciliation_residual": 0.0,
+      "identity_max_abs": 1.3877787807814457e-17
+     }
+    }
+   },
+   "reconciled": true
+  },
+  {
+   "case": "GB",
+   "closure": "mass",
+   "status": "ok",
+   "times": {
+    "half": {
+     "reverse_time": 0.075,
+     "u": {
+      "total_norm": 0.02501036528688119,
+      "component_norms": {
+       "wrong_transport": 0.02508313213074498,
+       "closure": 0.0,
+       "score_regularization": 0.00043061974564761833,
+       "particle_discretization": 0.0017358134069247186
+      },
+      "inner_products": {
+       "wrong_transport|closure": 0.0,
+       "wrong_transport|score_regularization": -4.60891172913577e-06,
+       "wrong_transport|particle_discretization": 1.226560140359597e-06,
+       "closure|score_regularization": 0.0,
+       "closure|particle_discretization": 0.0,
+       "score_regularization|particle_discretization": -3.9462038314229475e-08
+      },
+      "reconciliation_residual": 1.733285897574286e-16,
+      "identity_max_abs": 3.469446951953614e-18
+     },
+     "q": {
+      "total_norm": 0.7004137641678764,
+      "component_norms": {
+       "wrong_transport": 0.24774093860812885,
+       "closure": 0.0,
+       "score_regularization": 0.00757509628437573,
+       "particle_discretization": 0.6546431829211351
+      },
+      "inner_products": {
+       "wrong_transport|closure": 0.0,
+       "wrong_transport|score_regularization": 0.0004130715806159392,
+       "wrong_transport|particle_discretization": -0.000128208032167175,
+       "closure|score_regularization": 0.0,
+       "closure|particle_discretization": 0.0,
+       "score_regularization|particle_discretization": 9.531123823470726e-06
+      },
+      "reconciliation_residual": 1.1315425512746952e-16,
+      "identity_max_abs": 1.734723475976807e-18
+     }
+    },
+    "final": {
+     "reverse_time": 0.15,
+     "u": {
+      "total_norm": 0.0562800105265795,
+      "component_norms": {
+       "wrong_transport": 0.05695422921739735,
+       "closure": 0.0,
+       "score_regularization": 0.0010050336706217842,
+       "particle_discretization": 0.0017085120533722208
+      },
+      "inner_products": {
+       "wrong_transport|closure": 0.0,
+       "wrong_transport|score_regularization": -2.818613794151123e-05,
+       "wrong_transport|particle_discretization": -1.2029508360751557e-05,
+       "closure|score_regularization": 0.0,
+       "closure|particle_discretization": 0.0,
+       "score_regularization|particle_discretization": 7.877280649288776e-08
+      },
+      "reconciliation_residual": 2.7383686878544904e-16,
+      "identity_max_abs": 6.938893903907228e-18
+     },
+     "q": {
+      "total_norm": 1.0692809098360776,
+      "component_norms": {
+       "wrong_transport": 0.6333471137374813,
+       "closure": 0.0,
+       "score_regularization": 0.020508367775395796,
+       "particle_discretization": 0.8610169285888974
+      },
+      "inner_products": {
+       "wrong_transport|closure": 0.0,
+       "wrong_transport|score_regularization": 0.0017029138417967366,
+       "wrong_transport|particle_discretization": -0.0014783782536747106,
+       "closure|score_regularization": 0.0,
+       "closure|particle_discretization": 0.0,
+       "score_regularization|particle_discretization": 6.641009279090989e-06
+      },
+      "reconciliation_residual": 1.942032970749211e-16,
+      "identity_max_abs": 1.3877787807814457e-17
+     }
+    }
+   },
+   "reconciled": true
+  }
+ ],
+ "analytic_anchor_G1": {
+  "signed_mean_offset": -0.0939735089930803,
+  "predicted_signed_offset": -0.09398194421107708,
+  "abs_error_vs_formula": 8.435217996788369e-06,
+  "offset_std": 5.452230650239313e-06,
+  "magnitude": 0.09398194421107708,
+  "relative_l2_contribution": 0.04429953704849486
+ }
+}

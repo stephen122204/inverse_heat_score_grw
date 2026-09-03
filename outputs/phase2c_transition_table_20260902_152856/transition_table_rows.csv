@@ -1,0 +1,4 @@
+study,case,era,status,censored,failure_step,failure_message,E2,epsilon_style,epsilon_value,grid_convention,h_effective,h_nominal,mass_initial,n_grid,n_particles,score_estimator,smoothing_operations
+transition_table,C1,endpoint_free_space_legacy,completed,False,,,0.9088265246601475,absolute,1e-08,endpoint,0.014177579572662607,0.010025062656641603,1.0,400,10000,free_space_kde_smoothed_log,2
+transition_table,C1,cell_centered_free_space_legacy,completed,False,,,0.9107081547908241,absolute,1e-08,cell_centered,0.014142135623730952,0.01,1.0,400,10000,free_space_kde_smoothed_log,2
+transition_table,C1,cell_centered_neumann_canonical,completed,False,,,0.02525093449851037,relative,1e-08,cell_centered,0.028,0.028,1.0000000000000004,400,4000,neumann_kde,1

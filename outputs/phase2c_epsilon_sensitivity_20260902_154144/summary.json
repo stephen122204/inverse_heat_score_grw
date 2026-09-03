@@ -1,0 +1,17 @@
+{
+ "accounting": {
+  "attempted_rows": 8,
+  "censored_rows": 0,
+  "completed_rows": 8,
+  "consistent": true,
+  "duplicate_rows": [],
+  "expected_rows": 8,
+  "failed_rows": 0,
+  "missing_rows": [],
+  "study": "epsilon_sensitivity",
+  "unexpected_rows": []
+ },
+ "verdicts": {
+  "accounting_consistent": true
+ }
+}

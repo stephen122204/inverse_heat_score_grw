@@ -1,0 +1,23 @@
+{
+ "references": [
+  {
+   "M": 6400,
+   "e_U": 0.00030706207850177017,
+   "ratio": 1.0003715186350088
+  },
+  {
+   "M": 12800,
+   "e_U": 0.0003070480286109074,
+   "ratio": 1.0003257457713337
+  }
+ ],
+ "pair_defect_relative": 4.577286367505853e-05,
+ "verdicts": {
+  "block_a_within_certificate_band": true,
+  "block_a_reference_pair_defect_relative": true
+ },
+ "evidence_grade_blocks": [
+  "carrier",
+  "q_level"
+ ]
+}
