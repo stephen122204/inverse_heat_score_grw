@@ -1,0 +1,4 @@
+construction,nominal $h$,effective $h$,smoothings,$E_2$
+"endpoint grid, free-space kernel",0.0100,0.0142,2,0.9088265246601476
+"cell-centered grid, free-space kernel",0.0100,0.0141,2,0.910708154790824
+"cell-centered grid, Neumann kernel",0.0280,0.0280,1,0.0252509344985103
