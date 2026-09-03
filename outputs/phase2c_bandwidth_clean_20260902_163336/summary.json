@@ -1,0 +1,17 @@
+{
+ "accounting": {
+  "attempted_rows": 63,
+  "censored_rows": 0,
+  "completed_rows": 63,
+  "consistent": true,
+  "duplicate_rows": [],
+  "expected_rows": 63,
+  "failed_rows": 0,
+  "missing_rows": [],
+  "study": "bandwidth_clean",
+  "unexpected_rows": []
+ },
+ "verdicts": {
+  "accounting_consistent": true
+ }
+}

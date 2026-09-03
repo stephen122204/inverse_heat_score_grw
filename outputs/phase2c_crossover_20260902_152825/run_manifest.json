@@ -1,0 +1,33 @@
+{
+  "code_commit": "688afc7f47435e066ed5507f28ed6e0978352ada",
+  "commands": [
+    {
+      "argv": [
+        "scripts/run_science_campaign.py",
+        "--run",
+        "crossover"
+      ],
+      "study": "crossover"
+    }
+  ],
+  "created_utc": "2026-09-02T16:31:35.404697+00:00",
+  "environment": {
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "python": "3.11.4"
+  },
+  "run_id": "phase2c_crossover_20260902_152825",
+  "schema_version": 1,
+  "studies": {
+    "crossover": {
+      "path": "outputs/phase2c_crossover_20260902_152825",
+      "required_files": [
+        "crossover_rows.csv",
+        "summary.json"
+      ],
+      "sha256": {
+        "crossover_rows.csv": "81b5942d00a21081733d4a130b83ad73a88cd0ec85b9bde88b0fde88fd43458d",
+        "summary.json": "b1a2724b4847197eefcc7c6245aa3643f9687213f29bc02c59588fb4a057b640"
+      }
+    }
+  }
+}

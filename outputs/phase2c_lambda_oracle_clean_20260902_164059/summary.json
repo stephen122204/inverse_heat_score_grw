@@ -1,0 +1,17 @@
+{
+ "accounting": {
+  "attempted_rows": 9,
+  "censored_rows": 2,
+  "completed_rows": 9,
+  "consistent": true,
+  "duplicate_rows": [],
+  "expected_rows": 9,
+  "failed_rows": 0,
+  "missing_rows": [],
+  "study": "lambda_oracle_clean",
+  "unexpected_rows": []
+ },
+ "verdicts": {
+  "accounting_consistent": true
+ }
+}

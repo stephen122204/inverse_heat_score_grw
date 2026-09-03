@@ -1,0 +1,18 @@
+{
+ "accounting": {
+  "attempted_rows": 3,
+  "censored_rows": 0,
+  "completed_rows": 3,
+  "consistent": true,
+  "duplicate_rows": [],
+  "expected_rows": 3,
+  "failed_rows": 0,
+  "missing_rows": [],
+  "study": "transition_table",
+  "unexpected_rows": []
+ },
+ "legacy_source_commit": "e80c61f",
+ "verdicts": {
+  "accounting_consistent": true
+ }
+}

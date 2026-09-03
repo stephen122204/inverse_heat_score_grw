@@ -1,0 +1,19 @@
+{
+ "accounting": {
+  "attempted_rows": 2114,
+  "censored_rows": 0,
+  "completed_rows": 2114,
+  "consistent": true,
+  "duplicate_rows": [],
+  "expected_rows": 2114,
+  "failed_rows": 0,
+  "missing_rows": [],
+  "study": "noise_paired",
+  "unexpected_rows": []
+ },
+ "bandwidth_selection_blocks": 600,
+ "incomplete_selection_blocks": 0,
+ "verdicts": {
+  "accounting_consistent": true
+ }
+}

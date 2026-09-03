@@ -1,0 +1,37 @@
+{
+  "code_commit": "688afc7f47435e066ed5507f28ed6e0978352ada",
+  "commands": [
+    {
+      "argv": [
+        "scripts/run_science_campaign.py",
+        "--run",
+        "closure"
+      ],
+      "study": "closure"
+    }
+  ],
+  "created_utc": "2026-09-02T16:33:35.683297+00:00",
+  "environment": {
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "python": "3.11.4"
+  },
+  "run_id": "phase2c_closure_20260902_154815",
+  "schema_version": 1,
+  "studies": {
+    "closure": {
+      "path": "outputs/phase2c_closure_20260902_154815",
+      "required_files": [
+        "closure_decomposition.json",
+        "closure_gates.json",
+        "closure_rows.csv",
+        "summary.json"
+      ],
+      "sha256": {
+        "closure_decomposition.json": "906fcc1c9b8dd99d9b0f3593e08ba2bb865daa77d9fdaa88091e364acd428873",
+        "closure_gates.json": "7155590e42d7b46499dcdb11b685672ae6d14c0d46995c27dcda38c8b3933ba7",
+        "closure_rows.csv": "7032ad4f7a8f94cc9b19b384968bc782ce58a4387c20db5587de745c9c3be6e5",
+        "summary.json": "a8403df09c9ae6486b5837c12c32215cbb85c5fe0cd59dea39b1515a77a7a599"
+      }
+    }
+  }
+}

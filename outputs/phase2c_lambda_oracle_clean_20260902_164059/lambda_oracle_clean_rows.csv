@@ -1,0 +1,10 @@
+study,case,selection,status,censored,failure_step,failure_message,E2_at_selection,coarse_winner_z,evaluations,lambda_selected,residual_at_selection,selection_label,z_selected
+lambda_oracle_clean,C1,oracle_continuous,completed,True,,,2.2355348425846e-12,-12.0,93,1e-12,1.3046412389683111e-12,oracle_continuous,-12.0
+lambda_oracle_clean,C2,oracle_continuous,completed,True,,,1.456006999627146e-12,-12.0,92,1e-12,1.030313606635853e-12,oracle_continuous,-12.0
+lambda_oracle_clean,B,oracle_continuous,completed,False,,,0.000564385671328551,-3.75,76,0.00015872348085630903,0.00020533184368434575,oracle_continuous,-3.799358820869641
+lambda_oracle_clean,H,oracle_continuous,completed,False,,,0.0027403514912681826,-5.125,75,7.007541601197075e-06,2.393109190181958e-05,oracle_continuous,-5.15443431531342
+lambda_oracle_clean,Z,oracle_continuous,completed,False,,,2.3994283615135467e-08,-8.046875,85,8.965515679379327e-09,1.1080760824369525e-08,oracle_continuous,-8.047424725592265
+lambda_oracle_clean,VB05,oracle_continuous,completed,False,,,5.552422226760704e-05,-7.875,79,1.4087868129401708e-08,2.0793357354128955e-08,oracle_continuous,-7.8511547222694285
+lambda_oracle_clean,VB09,oracle_continuous,completed,False,,,8.331223542085382e-05,-8.390625,78,4.218442068899406e-09,1.574251468374149e-08,oracle_continuous,-8.374847910603254
+lambda_oracle_clean,VH05,oracle_continuous,completed,False,,,0.00034977276249339295,-11.3125,76,4.1927486529201995e-12,1.4744809747543033e-09,oracle_continuous,-11.3775011719207
+lambda_oracle_clean,VH09,oracle_continuous,completed,False,,,0.0005552826163957797,-11.828125,75,1.6260305921052788e-12,3.851467177277727e-09,oracle_continuous,-11.78887128785786

@@ -1,0 +1,19 @@
+{
+ "accounting": {
+  "attempted_rows": 900,
+  "censored_rows": 66,
+  "completed_rows": 900,
+  "consistent": true,
+  "duplicate_rows": [],
+  "expected_rows": 900,
+  "failed_rows": 0,
+  "missing_rows": [],
+  "study": "lambda_noise",
+  "unexpected_rows": []
+ },
+ "monotonicity_failures": 0,
+ "verdicts": {
+  "accounting_consistent": true,
+  "no_morozov_labels_on_failed_rows": true
+ }
+}

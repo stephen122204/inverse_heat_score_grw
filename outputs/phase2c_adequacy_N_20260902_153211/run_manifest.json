@@ -1,0 +1,33 @@
+{
+  "code_commit": "688afc7f47435e066ed5507f28ed6e0978352ada",
+  "commands": [
+    {
+      "argv": [
+        "scripts/run_science_campaign.py",
+        "--run",
+        "adequacy_N"
+      ],
+      "study": "adequacy_N"
+    }
+  ],
+  "created_utc": "2026-09-02T15:41:44.007486+00:00",
+  "environment": {
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "python": "3.11.4"
+  },
+  "run_id": "phase2c_adequacy_N_20260902_153211",
+  "schema_version": 1,
+  "studies": {
+    "adequacy_N": {
+      "path": "outputs/phase2c_adequacy_N_20260902_153211",
+      "required_files": [
+        "adequacy_N_rows.csv",
+        "summary.json"
+      ],
+      "sha256": {
+        "adequacy_N_rows.csv": "44de25a3d063add6f0717de0c81ac9ce264465360c2e1a9fd1cd4735a78223ce",
+        "summary.json": "e9551ba472cc7c4f1b103f315dbd567a62891317638c748a5287ab6ee6fc2239"
+      }
+    }
+  }
+}
