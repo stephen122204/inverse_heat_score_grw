@@ -1,13 +1,13 @@
 % Gradient-level decomposition at reverse time T
-\begin{tabular}{lrrrrr}
+\begin{tabular}{lrrrrrr}
 \toprule
-case & closure & total & wrong transport & score regularization & particle discretization \\
+case & closure & total & wrong transport & closure offset & score regularization & particle discretization \\
 \midrule
-G1 & $6.26\times10^{-4}$ & 0.3746 & 0.2216 & $1.164\times10^{-4}$ & 0.3015 \\
-G1 & 0.000 & 0.3755 & 0.2216 & $1.147\times10^{-4}$ & 0.3028 \\
-G2 & $3.04\times10^{-4}$ & 0.3374 & 0.2856 & $1.931\times10^{-4}$ & 0.1801 \\
-G2 & 0.000 & 0.3379 & 0.2856 & $1.917\times10^{-4}$ & 0.1808 \\
-GB & 0.079 & 1.0907 & 0.6333 & 0.0206 & 0.9168 \\
-GB & 0.000 & 1.0693 & 0.6333 & 0.0205 & 0.8610 \\
+G1 & frozen-left & 0.3746 & 0.2216 & $6.264\times10^{-4}$ & $1.164\times10^{-4}$ & 0.3015 \\
+G1 & mass & 0.3755 & 0.2216 & 0.0000 & $1.147\times10^{-4}$ & 0.3028 \\
+G2 & frozen-left & 0.3374 & 0.2856 & $3.037\times10^{-4}$ & $1.931\times10^{-4}$ & 0.1801 \\
+G2 & mass & 0.3379 & 0.2856 & 0.0000 & $1.917\times10^{-4}$ & 0.1808 \\
+GB & frozen-left & 1.0907 & 0.6333 & 0.0788 & 0.0206 & 0.9168 \\
+GB & mass & 1.0693 & 0.6333 & 0.0000 & 0.0205 & 0.8610 \\
 \bottomrule
 \end{tabular}

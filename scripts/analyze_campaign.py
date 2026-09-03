@@ -50,7 +50,7 @@ ETA_LS = {0.0: "-", 0.001: "--", 0.005: "-.", 0.01: ":"}
 ARM_NAME = {"P": "projected input", "R": "raw input"}
 CLOSURE_NAME = {"frozen_left": "frozen-left", "mass": "mass"}
 COMPONENTS = ["wrong_transport", "closure", "score_regularization", "particle_discretization"]
-COMPONENT_NAME = {"wrong_transport": "wrong transport", "closure": "closure",
+COMPONENT_NAME = {"wrong_transport": "wrong transport", "closure": "closure offset",
                   "score_regularization": "score regularization",
                   "particle_discretization": "particle discretization"}
 
@@ -230,7 +230,7 @@ def analyze_epsilon(manifest: dict, tables: Path) -> dict:
                      "min_raw_density": float(sub.min_raw_density.min()),
                      "all_completed": bool((sub.status == "completed").all())}
         table.append({"case": case, "$h$": f"{sub.h.iloc[0]:g}",
-                      **{f"$\\epsilon_{{\\mathrm{{rel}}}}={e:g}$": float(v) for e, v in zip(sub.eps_rel, sub.E2)},
+                      **{f"$\\epsilon_{{\\mathrm{{rel}}}}=10^{{{round(math.log10(e))}}}$": float(v) for e, v in zip(sub.eps_rel, sub.E2)},
                       "min reconstructed density": float(sub.min_reconstruction.min())})
     frame = pd.DataFrame(table)
     write_table(tables, "epsilon_sensitivity", frame,
@@ -511,7 +511,7 @@ def analyze_closure(manifest: dict, tables: Path, figures: Path) -> dict:
                    "$q$: $M=200$": cr["diffs"]["200"]["q"], "$M=400$ ": cr["diffs"]["400"]["q"], "$M=800$ ": cr["diffs"]["800"]["q"]})
     frt = pd.DataFrame(rt)
     write_table(tables, "closure_refinement", frt,
-                formats={c: (lambda v: fmt(v, 3, sci_below=1e-2)) for c in frt.columns if c not in ("case", "closure")},
+                formats={c: (lambda v: fmt(v, 3, sci_below=2e-2)) for c in frt.columns if c not in ("case", "closure")},
                 caption_note="Particle-discretization distance to the regularized reference under coupled (M, dt) refinement")
     hbt = []
     for key, hb in out["h_bridge"].items():
@@ -520,7 +520,7 @@ def analyze_closure(manifest: dict, tables: Path, figures: Path) -> dict:
                     **{f"$h={h:g}$": u for h, u in zip(hb["h"], hb["u"])}, "slope in $h$": hb["u_slope_in_h"]})
     fhb = pd.DataFrame(hbt)
     write_table(tables, "closure_h_bridge", fhb,
-                formats={c: (lambda v: fmt(v, 3, sci_below=1e-2)) for c in fhb.columns if c.startswith("$h")} | {"slope in $h$": lambda v: f"{v:.2f}"},
+                formats={c: (lambda v: fmt(v, 3, sci_below=2e-2)) for c in fhb.columns if c.startswith("$h")} | {"slope in $h$": lambda v: f"{v:.2f}"},
                 caption_note="Distance between the regularized and wrong-limit references (u level, M = 3200) as h decreases")
     figure_closure(out, figures)
     return out
@@ -569,7 +569,7 @@ def analyze_initial_rate(manifest: dict, tables: Path, figures: Path) -> dict:
                     "ratio_q": q.ratio_q.tolist(), "linear_coefficient_of_ratio_minus_one": coef,
                     "max_abs_residual_of_linear_fit": float(np.max(np.abs(ratio_minus_one - coef * taus)))},
     }
-    t1 = pd.DataFrame([{"reference grid $M$": int(r.M), "$\\Delta t$": f"{r['dt']:g}",
+    t1 = pd.DataFrame([{"reference grid $M$": int(r.M), "$\\Delta t$": f"${r['dt'] / 10 ** math.floor(math.log10(r['dt'])):.3g}\\times10^{{{math.floor(math.log10(r['dt']))}}}$",
                         "$\\|U_{\\mathrm{wrong}} - u\\|_2$ at $\\tau = 0.005$": float(r.e_U),
                         "ratio to $c_{\\mathrm{rep}}\\tau$": float(r.ratio), "within band": bool(r.within_band)} for _, r in ref.iterrows()])
     write_table(tables, "initial_rate_reference", t1,
