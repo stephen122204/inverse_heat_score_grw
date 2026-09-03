@@ -19,8 +19,11 @@ Reconstruction* by Stephen Abkin and Prabir Daripa.
 > and the orchestrator (`scripts/run_science_campaign.py`; `--run STUDY`
 > executes behind the freeze gate with per-study hash manifests). The
 > test suite (`python -m unittest discover -s tests`) covers both
-> layers. The campaign itself is intentionally not yet run; see the
-> parent repository's REFRAME_PLAN.md.
+> layers. The campaign has been run in full (3,230 preregistered rows,
+> 2026-09-02) and pinned in `manifests/phase2c_campaign.json`, whose
+> per-study directories under `outputs/phase2c_*` are the only data
+> sources for the manuscript; see the parent repository's
+> THROUGHLINE.md for the claim set.
 
 ## Getting Started
 
