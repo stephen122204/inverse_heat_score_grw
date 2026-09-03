@@ -47,7 +47,10 @@ CASE_LS = {"C1": "-", "C2": "--", "B": "-", "H": "--", "Z": ":",
            "VB05": "-.", "VB09": (0, (5, 1, 1, 1)), "VH05": (0, (3, 1)), "VH09": (0, (1, 1))}
 ETA_MARKER = {0.0: "o", 0.001: "s", 0.005: "^", 0.01: "D"}
 ETA_LS = {0.0: "-", 0.001: "--", 0.005: "-.", 0.01: ":"}
-ARM_NAME = {"P": "projected input", "R": "raw input"}
+VARIANT_NAME = {"P": "projected input", "R": "raw input"}
+# The archived CSV columns keep the protocol's internal names; the analysis
+# uses the manuscript vocabulary (noise realization, input variant).
+COLUMN_ALIASES = {"seed": "realization", "arm": "variant"}
 CLOSURE_NAME = {"frozen_left": "frozen-left", "mass": "mass"}
 COMPONENTS = ["wrong_transport", "closure", "score_regularization", "particle_discretization"]
 COMPONENT_NAME = {"wrong_transport": "wrong transport", "closure": "closure offset",
@@ -283,31 +286,33 @@ def analyze_noise(manifest: dict, tables: Path, figures: Path) -> dict:
     lam = read_rows(manifest, "lambda_noise")
     hs = sorted(npr.h.unique())
     out = {"bandwidths": hs, "blocks": {}, "curves": {}, "selection_gap": {}, "residual_target": {}}
-    sel_df = pd.DataFrame(sel)
+    sel_df = pd.DataFrame(sel).rename(columns=COLUMN_ALIASES)
+    npr = npr.rename(columns=COLUMN_ALIASES)
+    lam = lam.rename(columns=COLUMN_ALIASES)
     noisy = npr[npr.eta > 0].copy()
-    noisy["seed"] = noisy["seed"].astype(int)
-    lam["seed"] = pd.to_numeric(lam["seed"], errors="coerce")
+    noisy["realization"] = noisy["realization"].astype(int)
+    lam["realization"] = pd.to_numeric(lam["realization"], errors="coerce")
     summary_rows = []
     for case in ["C1", "B"]:
         for eta in sorted(noisy.eta.unique()):
-            for arm in ["P", "R"]:
-                blk = noisy[(noisy.case == case) & (noisy.eta == eta) & (noisy.arm == arm)]
-                seeds = sorted(blk.seed.unique())
+            for variant in ["P", "R"]:
+                blk = noisy[(noisy.case == case) & (noisy.eta == eta) & (noisy.variant == variant)]
+                realizations = sorted(blk.realization.unique())
                 # particle: truth-selected and residual-matched errors per realization
                 e_or, h_or, e_rm12, h_rm12, cens12, e_rm10, h_rm10, cens10 = [], [], [], [], [], [], [], []
-                for s in seeds:
-                    curve = blk[blk.seed == s].set_index("h").E2.reindex(hs)
+                for s in realizations:
+                    curve = blk[blk.realization == s].set_index("h").E2.reindex(hs)
                     idx = int(np.nanargmin(curve.values)); e_or.append(float(curve.values[idx])); h_or.append(float(hs[idx]))
                     for tau, e_l, h_l, c_l in ((1.2, e_rm12, h_rm12, cens12), (1.0, e_rm10, h_rm10, cens10)):
-                        srow = sel_df[(sel_df.case == case) & (sel_df.eta == eta) & (sel_df.arm == arm)
-                                      & (sel_df.seed == s) & (sel_df.tau == tau)].iloc[0]
+                        srow = sel_df[(sel_df.case == case) & (sel_df.eta == eta) & (sel_df.variant == variant)
+                                      & (sel_df.realization == s) & (sel_df.tau == tau)].iloc[0]
                         h_l.append(float(srow.selected_h)); c_l.append(bool(srow.endpoint_censored))
                         e_l.append(float(curve[srow.selected_h]))
                 # Tikhonov per realization: oracle, Morozov 1.2, residual 1.0; raw and projected outputs
-                tik = lam[(lam.case == case) & (lam.eta == eta) & (lam.arm == arm)]
+                tik = lam[(lam.case == case) & (lam.eta == eta) & (lam.variant == variant)]
                 def tik_series(selection, tau=None, col="E2_tikhonov_raw"):
                     sub = tik[tik.selection == selection] if tau is None else tik[(tik.selection == selection) & (tik.tau.astype(str) == str(tau))]
-                    sub = sub.set_index("seed").reindex(seeds)
+                    sub = sub.set_index("realization").reindex(realizations)
                     return sub[col].to_numpy(dtype=float), sub["censored"].to_numpy()
                 t_or, _ = tik_series("oracle_continuous")
                 t_or_p, _ = tik_series("oracle_continuous", col="E2_tikhonov_projected")
@@ -317,7 +322,7 @@ def analyze_noise(manifest: dict, tables: Path, figures: Path) -> dict:
                 t_m10_p, _ = tik_series("residual", 1.0, col="E2_tikhonov_projected")
                 e_or, e_rm12, e_rm10 = map(np.array, (e_or, e_rm12, e_rm10))
                 block = {
-                    "n_realizations": len(seeds),
+                    "n_realizations": len(realizations),
                     "particle_oracle": {"mean": float(e_or.mean()), "std": float(e_or.std(ddof=1)),
                                         "h_or_counts": {str(h): int(sum(1 for x in h_or if x == h)) for h in hs},
                                         "endpoint_count": int(sum(1 for x in h_or if x in (hs[0], hs[-1])))},
@@ -345,16 +350,16 @@ def analyze_noise(manifest: dict, tables: Path, figures: Path) -> dict:
                     "selection_gap_error_ratio": float(e_rm12.mean() / e_or.mean()),
                 }
                 # residual target attainability
-                tgt = [float(sel_df[(sel_df.case == case) & (sel_df.eta == eta) & (sel_df.arm == arm) & (sel_df.seed == s) & (sel_df.tau == 1.2)].iloc[0].target) for s in seeds]
-                rmin = [float(min(sel_df[(sel_df.case == case) & (sel_df.eta == eta) & (sel_df.arm == arm) & (sel_df.seed == s) & (sel_df.tau == 1.2)].iloc[0].curve_r)) for s in seeds]
+                tgt = [float(sel_df[(sel_df.case == case) & (sel_df.eta == eta) & (sel_df.variant == variant) & (sel_df.realization == s) & (sel_df.tau == 1.2)].iloc[0].target) for s in realizations]
+                rmin = [float(min(sel_df[(sel_df.case == case) & (sel_df.eta == eta) & (sel_df.variant == variant) & (sel_df.realization == s) & (sel_df.tau == 1.2)].iloc[0].curve_r)) for s in realizations]
                 block["residual_target"] = {"target_mean": float(np.mean(tgt)), "min_residual_mean": float(np.mean(rmin)),
                                             "fraction_attainable": float(np.mean(np.array(rmin) <= np.array(tgt)))}
                 # mean curves for the figure
                 cm = blk.groupby("h").E2.agg(["mean", "std"]).reindex(hs)
-                out["curves"][f"{case}|{eta:g}|{arm}"] = {"mean": cm["mean"].tolist(), "std": cm["std"].tolist()}
-                out["blocks"][f"{case}|{eta:g}|{arm}"] = block
+                out["curves"][f"{case}|{eta:g}|{variant}"] = {"mean": cm["mean"].tolist(), "std": cm["std"].tolist()}
+                out["blocks"][f"{case}|{eta:g}|{variant}"] = block
                 summary_rows.append({
-                    "case": case, "$\\eta$": f"{eta:g}", "input": ARM_NAME[arm],
+                    "case": case, "$\\eta$": f"{eta:g}", "input": VARIANT_NAME[variant],
                     "particle at $h_{\\mathrm{or}}$": block["particle_oracle"]["mean"],
                     "particle, residual-matched": block["particle_residual_matched_1.2"]["mean"],
                     "Tikhonov at $\\lambda_{\\mathrm{or}}$": block["tikhonov_oracle"]["mean"],
@@ -369,6 +374,22 @@ def analyze_noise(manifest: dict, tables: Path, figures: Path) -> dict:
                 formats={c: (lambda v: fmt(v, 4)) for c in frame.columns if c not in ("case", "$\\eta$", "input", "95\\% CI", "fraction favoring particle")}
                 | {"fraction favoring particle": lambda v: f"{v:.2f}"},
                 caption_note="Paired noise comparison, means over 25 realizations; differences are particle minus Tikhonov at the deployable rules (tau = 1.2)")
+    body = []
+    for key, block in out["blocks"].items():
+        case, eta, variant = key.split("|")
+        if variant != "P":
+            continue
+        po = block["particle_oracle"]; pr = block["particle_residual_matched_1.2"]
+        cens = f" ({po['endpoint_count']}/{block['n_realizations']})" if po["endpoint_count"] else ""
+        body.append({"case": case, "$\\eta$": eta,
+                     "particle at $h_{\\mathrm{or}}$": f"{po['mean']:.4f}" + ("$^{\\dagger}$" + cens if po["endpoint_count"] else ""),
+                     "particle, residual-matched": f"{pr['mean']:.4f}",
+                     "Tikhonov at $\\lambda_{\\mathrm{or}}$": f"{block['tikhonov_oracle']['mean']:.4f}",
+                     "Tikhonov, Morozov": f"{block['tikhonov_morozov_1.2']['mean']:.4f}",
+                     "paired difference": f"{block['paired_deployable_1.2']['mean']:.4f} [{block['paired_deployable_1.2']['ci_low']:.4f}, {block['paired_deployable_1.2']['ci_high']:.4f}]",
+                     "favoring particle": f"{block['paired_deployable_1.2']['fraction_negative']:.2f}"})
+    write_table(tables, "noise_paired_body", pd.DataFrame(body),
+                caption_note="Body table: common projected input, means over 25 realizations; dagger marks a truth-selected bandwidth at the top of the candidate set (count of censored realizations)")
     # clean curves for the figure
     clean = npr[npr.eta == 0]
     for case in ["C1", "B"]:
@@ -377,8 +398,8 @@ def analyze_noise(manifest: dict, tables: Path, figures: Path) -> dict:
     # sensitivity table at tau = 1.0
     sens = []
     for key, block in out["blocks"].items():
-        case, eta, arm = key.split("|")
-        sens.append({"case": case, "$\\eta$": eta, "input": ARM_NAME[arm],
+        case, eta, variant = key.split("|")
+        sens.append({"case": case, "$\\eta$": eta, "input": VARIANT_NAME[variant],
                      "particle, residual-matched, $\\tau=1$": block["particle_residual_matched_1.0"]["mean"],
                      "endpoint selections": block["particle_residual_matched_1.0"]["endpoint_count"],
                      "Tikhonov, residual, $\\tau=1$ (median)": block["tikhonov_residual_1.0"]["median"],
@@ -569,7 +590,7 @@ def analyze_initial_rate(manifest: dict, tables: Path, figures: Path) -> dict:
                     "ratio_q": q.ratio_q.tolist(), "linear_coefficient_of_ratio_minus_one": coef,
                     "max_abs_residual_of_linear_fit": float(np.max(np.abs(ratio_minus_one - coef * taus)))},
     }
-    t1 = pd.DataFrame([{"reference grid $M$": int(r.M), "$\\Delta t$": f"${r['dt'] / 10 ** math.floor(math.log10(r['dt'])):.3g}\\times10^{{{math.floor(math.log10(r['dt']))}}}$",
+    t1 = pd.DataFrame([{"reference grid $M$": int(r.M), "$\\Delta t$": f"${r['dt'] / 10 ** math.floor(math.log10(r['dt'])):.4g}\\times10^{{{math.floor(math.log10(r['dt']))}}}$",
                         "$\\|U_{\\mathrm{wrong}} - u\\|_2$ at $\\tau = 0.005$": float(r.e_U),
                         "ratio to $c_{\\mathrm{rep}}\\tau$": float(r.ratio), "within band": bool(r.within_band)} for _, r in ref.iterrows()])
     write_table(tables, "initial_rate_reference", t1,
