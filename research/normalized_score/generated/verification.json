@@ -1,0 +1,25 @@
+{
+  "checks": {
+    "source_class": true,
+    "amplitude_envelope": true,
+    "finite_gaussian_hypotheses": true,
+    "all_mode_gap": true,
+    "nonlinear_C0": true,
+    "bootstrap": true,
+    "remainder_constant": true,
+    "strict_positive_lower_bound": true,
+    "analytic_enclosure": true,
+    "numerical_value_inside_enclosure": true,
+    "denominator_tail": true,
+    "selected_summary_matches_input": true,
+    "plotted_full_coefficients": true,
+    "plotted_difference_coefficients": true
+  },
+  "all_passed": true,
+  "number_of_refinement_runs": 8,
+  "analytic_PDE_cos2_interval": [
+    "9.4550229478280277454889176341567503289904362400046082973972765661956592691064234E-18",
+    "9.5750229478280277454889176341567503289904362400046082973972765661956592691064234E-18"
+  ],
+  "interpretation": "Arithmetic and archive checks, not a formal proof or an interval certificate for Galerkin integration."
+}

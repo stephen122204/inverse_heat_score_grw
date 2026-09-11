@@ -1,8 +1,8 @@
 cff-version: 1.2.0
-message: "If you use this software, please cite the paper below."
+message: "If you use this software, cite this repository and the accompanying unpublished manuscript."
 title: >-
-  Score-guided density particles companion code: Score-Guided Density
-  Particles for Backward Heat Reconstruction
+  Normalized-score transport for inverse heat reconstruction: companion code
+repository-code: "https://github.com/stephen122204/inverse_heat_score_grw"
 authors:
   - family-names: Abkin
     given-names: Stephen
@@ -12,11 +12,11 @@ authors:
 license: NOASSERTION
 preferred-citation:
   type: article
-  title: Score-Guided Density Particles for Backward Heat Reconstruction
+  title: Failure of Uniform Density Recovery in Normalized-Score Backward Heat Transport
   authors:
     - family-names: Abkin
       given-names: Stephen
     - family-names: Daripa
       given-names: Prabir
   year: 2026
-  notes: "arXiv identifier: TBD (placeholder until posted)"
+  notes: "Unpublished manuscript, September 10, 2026. No journal or arXiv identifier assigned."

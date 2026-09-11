@@ -1,0 +1,42 @@
+[
+  {
+    "run": "illustration_J4_dt0025_p6_d80.json",
+    "identical_except_wall_time": true,
+    "differing_fields": []
+  },
+  {
+    "run": "illustration_J4_dt005_p6_d50.json",
+    "identical_except_wall_time": true,
+    "differing_fields": []
+  },
+  {
+    "run": "illustration_J4_dt005_p6_d80.json",
+    "identical_except_wall_time": true,
+    "differing_fields": []
+  },
+  {
+    "run": "illustration_J4_dt010_p4_d50.json",
+    "identical_except_wall_time": true,
+    "differing_fields": []
+  },
+  {
+    "run": "illustration_J4_dt010_p6_d50.json",
+    "identical_except_wall_time": true,
+    "differing_fields": []
+  },
+  {
+    "run": "illustration_J4_dt010_p6_d80.json",
+    "identical_except_wall_time": true,
+    "differing_fields": []
+  },
+  {
+    "run": "illustration_J6_dt005_p6_d80.json",
+    "identical_except_wall_time": true,
+    "differing_fields": []
+  },
+  {
+    "run": "illustration_J6_dt010_p6_d50.json",
+    "identical_except_wall_time": true,
+    "differing_fields": []
+  }
+]

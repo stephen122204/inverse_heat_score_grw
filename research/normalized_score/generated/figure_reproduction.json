@@ -1,0 +1,6 @@
+{
+  "both_figures_byte_identical_on_regeneration": true,
+  "pdf_sha256": "06137797cc740d837e3632fbc3e681d2b6ffb43756dcba6f859519f0e7df95ef",
+  "png_sha256": "e43ac1685717890edf37f7aca02f9fbd3447ab3c97908f8ea3201ded7e94c0d7",
+  "environment": "CPython 3.12.14, NumPy 2.4.4, Matplotlib 3.10.8"
+}

@@ -1,0 +1,15 @@
+{
+  "description": "Frozen admissible normalized-score illustration. Empirical refinements and separate analytic PDE enclosure; no fixed-target or practical-severity claim.",
+  "files": {
+    "results/illustration_J4_dt0025_p6_d80.json": "72e8b791dc109d7dff8d32cc71d14c25a9f47f42bc6b1c7b25857e884d689cdb",
+    "results/illustration_J4_dt005_p6_d50.json": "19488d508ab6973cf855ccd56d4ed08a2ec7ad6111c3a52e9055f35dbc89a49d",
+    "results/illustration_J4_dt005_p6_d80.json": "12df2cf72528555a65da245ac6fe05e94a1ca614675719a58bb7968d57bc5c38",
+    "results/illustration_J4_dt010_p4_d50.json": "2dbfd191c96b0bc69cfa7cf2bd3eaf5939785d6f0c6e77af2152a7d8a155c1f7",
+    "results/illustration_J4_dt010_p6_d50.json": "ef7363eea51d39a6954bb5af98e1ded8cb4c61ecef5e362800c480566199c7c7",
+    "results/illustration_J4_dt010_p6_d80.json": "ae3ff5ea234edb7b54989668327e7cb7666733271efe16c50095d0145c5c8f32",
+    "results/illustration_J6_dt005_p6_d80.json": "8cadea2f76b365dff0d2d25fa245efffe567c783dc1ea89799e7dc20658ad597",
+    "results/illustration_J6_dt010_p6_d50.json": "1113da3227811d85394ab5b8475d8e018a7f99fefacb0d207fc6e0e13b169799",
+    "results/illustration_summary.json": "b5517629d114c770061a27c512ab04aa08d4783daf15981b37a96f3f0d3caa1e"
+  },
+  "integrator_sha256": "e5fdba4175c4c61952b9640f5db04e9d0a4d45ab2fa13c88d9e0ed1c386aba01"
+}

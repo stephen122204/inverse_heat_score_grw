@@ -1,0 +1,15 @@
+{
+  "date": "2026-09-10",
+  "python": "3.12.14",
+  "numpy": "2.4.4",
+  "scipy": "1.17.1",
+  "pandas": "2.2.3",
+  "matplotlib": "3.10.8",
+  "pyyaml": "6.0.3",
+  "pytest": "7.4.0",
+  "solver_tests_passed": 133,
+  "illustration_replay_runs_identical_except_wall_time": 8,
+  "archived_output_destination_rejected_with_exit_code": 2,
+  "source_and_result_hashes_unchanged": true,
+  "scope": "Existing solver tests, illustration replay, arithmetic checks, figure reproduction and paired-data reanalysis. No Lean verification or interval time/spatial error certificate."
+}
