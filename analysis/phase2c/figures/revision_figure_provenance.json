@@ -1,0 +1,13 @@
+{
+  "source": "saved field snapshots and pinned analysis rows; no solver execution",
+  "field_sha256_at_visualization": {
+    "outputs/phase2c_closure_20260902_154815/fields/carrier_G1_mass_400.npz": "5cda2f426116f4a46519ed5c2faee2a128c874eb0167cfe7cc7d0f0cec123683",
+    "outputs/phase2c_closure_20260902_154815/fields/reference_G1_mass_unregularized_3200.npz": "b18fa838f5ebcda831ea55a86a73794e7836f2cfb3bb8bf192467af041399151",
+    "outputs/phase2c_closure_20260902_154815/fields/reference_G1_mass_regularized_3200.npz": "df68b1425f8376895e965131d7cb16aa3e4017b3a3bbad7b7abe73ddc06d62dc"
+  },
+  "field_norm_checks": {
+    "total": 0.06537278460603135,
+    "wrong_transport": 0.06530014960255623,
+    "particle_discretization": 0.0013528519370117787
+  }
+}

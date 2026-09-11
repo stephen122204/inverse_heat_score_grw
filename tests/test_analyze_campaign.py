@@ -39,8 +39,9 @@ class TestAnalyzeCampaign(unittest.TestCase):
                      "closure_decomposition_u.tex", "initial_rate_reference.tex", "crossover_continuum.tex"):
             self.assertIn(name, tables)
         figures = sorted(p.name for p in (self.out / "figures").glob("*.pdf"))
-        self.assertEqual(figures, ["bandwidth_clean.pdf", "closure_decomposition.pdf", "crossover.pdf",
-                                   "initial_rate.pdf", "noise_window.pdf"])
+        self.assertEqual(figures, ["bandwidth_clean.pdf", "bandwidth_variable.pdf", "closure_decomposition.pdf", "crossover.pdf",
+                                   "initial_rate.pdf", "noise_window.pdf",
+                                   "representation_convergence.pdf", "representation_fields.pdf"])
 
     def test_theorem_gate_and_selection_verdicts_are_reported_not_recomputed(self):
         ir = self.summary["initial_rate"]

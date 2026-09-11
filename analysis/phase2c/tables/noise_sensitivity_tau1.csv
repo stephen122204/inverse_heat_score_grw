@@ -1,4 +1,4 @@
-case,$\eta$,input,"particle, residual-matched, $\tau=1$",endpoint selections,"Tikhonov, residual, $\tau=1$ (median)",Tikhonov endpoint selections
+case,$\eta$,input,"$E_2(h_{\mathrm{rm}})$, $\tau=1$",endpoints,"median $E_2(\lambda)$, $\tau=1$",endpoints 
 C1,0.001,projected input,0.32570385111141964,0,0.0037026555185442,8
 C1,0.001,raw input,0.32570385111141964,0,0.0037026555185442,8
 C1,0.005,projected input,0.08468254716789668,23,0.0090703882263666,8

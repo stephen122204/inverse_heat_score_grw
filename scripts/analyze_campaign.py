@@ -56,6 +56,14 @@ COMPONENTS = ["wrong_transport", "closure", "score_regularization", "particle_di
 COMPONENT_NAME = {"wrong_transport": "wrong transport", "closure": "closure offset",
                   "score_regularization": "score regularization",
                   "particle_discretization": "particle discretization"}
+# Table headers use the symbols of the decomposition identity in the manuscript,
+# e_1 wrong transport, e_2 closure offset, e_3 score regularization, e_4 particle discretization.
+COMPONENT_SYMBOL = {"wrong_transport": "$\\|e_1\\|$", "closure": "$\\|e_2\\|$",
+                    "score_regularization": "$\\|e_3\\|$", "particle_discretization": "$\\|e_4\\|$"}
+COMPONENT_INDEX = {"wrong_transport": 1, "closure": 2, "score_regularization": 3, "particle_discretization": 4}
+# A decomposition row whose reference pair failed its refinement requirement is
+# printed with an asterisk on the case label and excluded from the admissible-row summaries.
+INADMISSIBLE_MARK = "$^{*}$"
 
 
 # ----------------------------------------------------------------------
@@ -360,20 +368,25 @@ def analyze_noise(manifest: dict, tables: Path, figures: Path) -> dict:
                 out["blocks"][f"{case}|{eta:g}|{variant}"] = block
                 summary_rows.append({
                     "case": case, "$\\eta$": f"{eta:g}", "input": VARIANT_NAME[variant],
-                    "particle at $h_{\\mathrm{or}}$": block["particle_oracle"]["mean"],
-                    "particle, residual-matched": block["particle_residual_matched_1.2"]["mean"],
-                    "Tikhonov at $\\lambda_{\\mathrm{or}}$": block["tikhonov_oracle"]["mean"],
-                    "Tikhonov, Morozov": block["tikhonov_morozov_1.2"]["mean"],
-                    "Tikhonov, Morozov, projected": block["tikhonov_morozov_1.2"]["projected_mean"],
-                    "paired mean diff.": block["paired_deployable_1.2"]["mean"],
+                    "$E_2(h_{\\mathrm{or}})$": block["particle_oracle"]["mean"],
+                    "$E_2(h_{\\mathrm{rm}})$": block["particle_residual_matched_1.2"]["mean"],
+                    "$E_2(\\lambda_{\\mathrm{or}})$": block["tikhonov_oracle"]["mean"],
+                    "$E_2(\\lambda_{\\mathrm{M}})$": block["tikhonov_morozov_1.2"]["mean"],
+                    "$E_2(\\lambda_{\\mathrm{M}})$, projected": block["tikhonov_morozov_1.2"]["projected_mean"],
+                    "$\\Delta$": block["paired_deployable_1.2"]["mean"],
                     "95\\% CI": f"[{block['paired_deployable_1.2']['ci_low']:.4f}, {block['paired_deployable_1.2']['ci_high']:.4f}]",
-                    "fraction favoring particle": block["paired_deployable_1.2"]["fraction_negative"],
+                    "favoring particle": block["paired_deployable_1.2"]["fraction_negative"],
                 })
     frame = pd.DataFrame(summary_rows)
-    write_table(tables, "noise_paired", frame,
-                formats={c: (lambda v: fmt(v, 4)) for c in frame.columns if c not in ("case", "$\\eta$", "input", "95\\% CI", "fraction favoring particle")}
-                | {"fraction favoring particle": lambda v: f"{v:.2f}"},
-                caption_note="Paired noise comparison, means over 25 realizations; differences are particle minus Tikhonov at the deployable rules (tau = 1.2)")
+    error_cols = ["case", "$\\eta$", "input", "$E_2(h_{\\mathrm{or}})$", "$E_2(h_{\\mathrm{rm}})$",
+                  "$E_2(\\lambda_{\\mathrm{or}})$", "$E_2(\\lambda_{\\mathrm{M}})$", "$E_2(\\lambda_{\\mathrm{M}})$, projected"]
+    write_table(tables, "noise_paired", frame[error_cols],
+                formats={c: (lambda v: fmt(v, 4)) for c in error_cols if c not in ("case", "$\\eta$", "input")},
+                caption_note="Paired noise comparison, means over 25 realizations, both input variants; errors only")
+    stat_cols = ["case", "$\\eta$", "input", "$\\Delta$", "95\\% CI", "favoring particle"]
+    write_table(tables, "noise_paired_stats", frame[stat_cols],
+                formats={"$\\Delta$": lambda v: fmt(v, 4), "favoring particle": lambda v: f"{v:.2f}"},
+                caption_note="Paired statistics: particle at the residual-matched bandwidth minus Tikhonov at the Morozov choice (tau = 1.2)")
     body = []
     for key, block in out["blocks"].items():
         case, eta, variant = key.split("|")
@@ -382,14 +395,14 @@ def analyze_noise(manifest: dict, tables: Path, figures: Path) -> dict:
         po = block["particle_oracle"]; pr = block["particle_residual_matched_1.2"]
         cens = f" ({po['endpoint_count']}/{block['n_realizations']})" if po["endpoint_count"] else ""
         body.append({"case": case, "$\\eta$": eta,
-                     "particle at $h_{\\mathrm{or}}$": f"{po['mean']:.4f}" + ("$^{\\dagger}$" + cens if po["endpoint_count"] else ""),
-                     "particle, residual-matched": f"{pr['mean']:.4f}",
-                     "Tikhonov at $\\lambda_{\\mathrm{or}}$": f"{block['tikhonov_oracle']['mean']:.4f}",
-                     "Tikhonov, Morozov": f"{block['tikhonov_morozov_1.2']['mean']:.4f}",
-                     "paired difference": f"{block['paired_deployable_1.2']['mean']:.4f} [{block['paired_deployable_1.2']['ci_low']:.4f}, {block['paired_deployable_1.2']['ci_high']:.4f}]",
-                     "favoring particle": f"{block['paired_deployable_1.2']['fraction_negative']:.2f}"})
+                     "$E_2(h_{\\mathrm{or}})$": f"{po['mean']:.4f}" + ("$^{\\dagger}$" if po["endpoint_count"] else ""),
+                     "$E_2(h_{\\mathrm{rm}})$": f"{pr['mean']:.4f}",
+                     "$E_2(\\lambda_{\\mathrm{or}})$": f"{block['tikhonov_oracle']['mean']:.4f}",
+                     "$E_2(\\lambda_{\\mathrm{M}})$": f"{block['tikhonov_morozov_1.2']['mean']:.4f}",
+                     "$\\Delta$ [95\\% CI]": f"{block['paired_deployable_1.2']['mean']:.4f} [{block['paired_deployable_1.2']['ci_low']:.4f}, {block['paired_deployable_1.2']['ci_high']:.4f}]",
+                     "endpoint": f"{po['endpoint_count']}/{block['n_realizations']}"})
     write_table(tables, "noise_paired_body", pd.DataFrame(body),
-                caption_note="Body table: common projected input, means over 25 realizations; dagger marks a truth-selected bandwidth at the top of the candidate set (count of censored realizations)")
+                caption_note="Body table: common projected input, means over 25 realizations; dagger marks an oracle bandwidth at the top of the candidate set, with the count of such realizations in the last column")
     # clean curves for the figure
     clean = npr[npr.eta == 0]
     for case in ["C1", "B"]:
@@ -400,61 +413,26 @@ def analyze_noise(manifest: dict, tables: Path, figures: Path) -> dict:
     for key, block in out["blocks"].items():
         case, eta, variant = key.split("|")
         sens.append({"case": case, "$\\eta$": eta, "input": VARIANT_NAME[variant],
-                     "particle, residual-matched, $\\tau=1$": block["particle_residual_matched_1.0"]["mean"],
-                     "endpoint selections": block["particle_residual_matched_1.0"]["endpoint_count"],
-                     "Tikhonov, residual, $\\tau=1$ (median)": block["tikhonov_residual_1.0"]["median"],
-                     "Tikhonov endpoint selections": block["tikhonov_residual_1.0"]["endpoint_count"]})
+                     "$E_2(h_{\\mathrm{rm}})$, $\\tau=1$": block["particle_residual_matched_1.0"]["mean"],
+                     "endpoints": block["particle_residual_matched_1.0"]["endpoint_count"],
+                     "median $E_2(\\lambda)$, $\\tau=1$": block["tikhonov_residual_1.0"]["median"],
+                     "endpoints ": block["tikhonov_residual_1.0"]["endpoint_count"]})
     write_table(tables, "noise_sensitivity_tau1", pd.DataFrame(sens),
-                formats={"particle, residual-matched, $\\tau=1$": lambda v: fmt(v, 4),
-                         "Tikhonov, residual, $\\tau=1$ (median)": lambda v: fmt(v, 4)},
+                formats={"$E_2(h_{\\mathrm{rm}})$, $\\tau=1$": lambda v: fmt(v, 4),
+                         "median $E_2(\\lambda)$, $\\tau=1$": lambda v: fmt(v, 4)},
                 caption_note="Residual-rule sensitivity at tau = 1.0 (labeled sensitivity, not the headline)")
     figure_noise_window(out, hs, figures)
     return out
 
 
 def figure_bandwidth_clean(bw: dict, figures: Path) -> None:
-    import matplotlib.pyplot as plt
-    figstyle.apply_paper_style()
-    hs = bw["bandwidths"]
-    fig, axes = plt.subplots(1, 2, figsize=(9.2, 3.6))
-    for ax, cases, tag in ((axes[0], EXACT_CASES, "(a)"), (axes[1], SECONDARY_CASES + VARIABLE_CASES, "(b)")):
-        for case in cases:
-            e = [bw["cases"][case]["E2_by_h"][str(h)] for h in hs]
-            ax.plot(hs, e, color=figstyle.METHOD, marker=CASE_MARKER[case], linestyle=CASE_LS[case], label=case)
-        ax.set_xscale("log"); ax.set_yscale("log")
-        ax.set_xlabel("bandwidth $h$"); ax.set_ylabel("relative $L^2$ error $E_2$")
-        ax.set_xticks(hs); ax.set_xticklabels([f"{h:g}" for h in hs], rotation=45)
-        ax.minorticks_off()
-        ax.text(0.02, 0.04, tag, transform=ax.transAxes, fontsize=11)
-        ax.legend(frameon=True, ncol=2 if len(cases) > 3 else 1)
-    for delta, ls in (("1e-8", "--"), ("1e-2", ":")):
-        axes[0].axvline(bw["window_scale_C1"][delta], color=figstyle.EXACT, linestyle=ls, linewidth=1.2)
-    fig.tight_layout()
-    figures.mkdir(parents=True, exist_ok=True)
-    fig.savefig(figures / "bandwidth_clean.pdf"); plt.close(fig)
+    from scripts.plot_revision_figures import figure_bandwidth_clean as render
+    render(bw, figures)
 
 
 def figure_noise_window(noise: dict, hs: list, figures: Path) -> None:
-    import matplotlib.pyplot as plt
-    figstyle.apply_paper_style()
-    fig, axes = plt.subplots(1, 2, figsize=(9.2, 3.6))
-    for ax, case, tag in ((axes[0], "C1", "(a)"), (axes[1], "B", "(b)")):
-        for eta in (0.0, 0.001, 0.005, 0.01):
-            key = f"{case}|{eta:g}|shared" if eta == 0 else f"{case}|{eta:g}|P"
-            c = noise["curves"][key]
-            ax.errorbar(hs, c["mean"], yerr=c["std"], color=figstyle.METHOD, marker=ETA_MARKER[eta],
-                        linestyle=ETA_LS[eta], capsize=2, label=f"$\\eta={eta:g}$")
-            if eta > 0:
-                lvl = noise["blocks"][f"{case}|{eta:g}|P"]["tikhonov_oracle"]["mean"]
-                ax.axhline(lvl, color=figstyle.TIKH, linestyle=ETA_LS[eta], linewidth=1.2)
-        ax.set_xscale("log"); ax.set_yscale("log")
-        ax.set_xticks(hs); ax.set_xticklabels([f"{h:g}" for h in hs], rotation=45); ax.minorticks_off()
-        ax.set_xlabel("bandwidth $h$"); ax.set_ylabel("relative $L^2$ error $E_2$")
-        ax.text(0.02, 0.04, tag, transform=ax.transAxes, fontsize=11)
-        ax.legend(frameon=True, ncol=2)
-    fig.tight_layout()
-    figures.mkdir(parents=True, exist_ok=True)
-    fig.savefig(figures / "noise_window.pdf"); plt.close(fig)
+    from scripts.plot_revision_figures import figure_noise_window as render
+    render(noise, hs, figures)
 
 
 def analyze_closure(manifest: dict, tables: Path, figures: Path) -> dict:
@@ -463,6 +441,12 @@ def analyze_closure(manifest: dict, tables: Path, figures: Path) -> dict:
     gates = read_json(manifest, "closure", "closure_gates.json")
     out = {"decomposition": {}, "analytic_anchor_G1": dec["analytic_anchor_G1"], "reference_pairs": {},
            "carrier_refinement": {}, "h_bridge": {}, "split_invariance": {}, "verdicts": gates["verdicts"]}
+    failed_pairs = {(rp["case"], rp["closure"]) for rp in gates["reference_pairs"] if not rp["pass"]}
+    out["inadmissible_rows"] = sorted(f"{c}|{cl}" for c, cl in failed_pairs)
+
+    def case_label(c: dict) -> str:
+        return c["case"] + (INADMISSIBLE_MARK if (c["case"], c["closure"]) in failed_pairs else "")
+
     table = []
     for c in dec["cases"]:
         key = f"{c['case']}|{c['closure']}"
@@ -476,35 +460,38 @@ def analyze_closure(manifest: dict, tables: Path, figures: Path) -> dict:
                                        "reconciliation_residual": t[level]["reconciliation_residual"],
                                        "dominant": max(COMPONENTS, key=lambda k: comp[k]),
                                        "wrong_transport_share": comp["wrong_transport"] / t[level]["total_norm"]}
-        out["decomposition"][key] = {"status": c["status"], "reconciled": c["reconciled"], **entry}
+        out["decomposition"][key] = {"status": c["status"], "reconciled": c["reconciled"],
+                                     "admissible": (c["case"], c["closure"]) not in failed_pairs, **entry}
         t = c["times"]["final"]["u"]
-        table.append({"case": c["case"], "closure": CLOSURE_NAME[c["closure"]], "total": t["total_norm"],
-                      **{COMPONENT_NAME[k]: t["component_norms"][k] for k in COMPONENTS},
-                      "reconciliation": t["reconciliation_residual"]})
+        table.append({"case": case_label(c), "closure": CLOSURE_NAME[c["closure"]], "total": t["total_norm"],
+                      **{COMPONENT_SYMBOL[k]: t["component_norms"][k] for k in COMPONENTS}})
     frame = pd.DataFrame(table)
+    out["max_reconciliation_residual_u"] = max(c["times"]["final"]["u"]["reconciliation_residual"] for c in dec["cases"])
     write_table(tables, "closure_decomposition_u", frame,
-                formats={c: (lambda v: fmt(v, 4, sci_below=1e-3)) for c in frame.columns if c not in ("case", "closure")}
-                | {"reconciliation": lambda v: fmt(v, 2, sci_below=1.0)},
-                caption_note="Field-level decomposition at reverse time T, absolute L2 norms on the M = 400 grid")
+                formats={c: (lambda v: fmt(v, 4, sci_below=1e-3)) for c in frame.columns if c not in ("case", "closure")},
+                caption_note="Field-level decomposition at reverse time T, absolute L2 norms on the M = 400 grid; e_1 wrong transport, e_2 closure offset, e_3 score regularization, e_4 particle discretization; asterisk marks a row whose reference pair failed its refinement requirement")
     tq = []
     for c in dec["cases"]:
         t = c["times"]["final"]["q"]
-        tq.append({"case": c["case"], "closure": CLOSURE_NAME[c["closure"]], "total": t["total_norm"],
-                   **{COMPONENT_NAME[k]: t["component_norms"][k] for k in COMPONENTS}})
+        tq.append({"case": case_label(c), "closure": CLOSURE_NAME[c["closure"]], "total": t["total_norm"],
+                   **{COMPONENT_SYMBOL[k]: t["component_norms"][k] for k in COMPONENTS}})
     fq = pd.DataFrame(tq)
     write_table(tables, "closure_decomposition_q", fq,
                 formats={c: (lambda v: fmt(v, 4, sci_below=1e-3)) for c in fq.columns if c not in ("case", "closure")},
-                caption_note="Gradient-level decomposition at reverse time T")
+                caption_note="Gradient-level decomposition at reverse time T; same symbols as the field-level table")
     # inner products table (u, final)
     ip = []
     for c in dec["cases"]:
         ips = c["times"]["final"]["u"]["inner_products"]
-        ip.append({"case": c["case"], "closure": CLOSURE_NAME[c["closure"]],
-                   **{k.replace("|", ", ").replace("_", " "): v for k, v in ips.items()}})
+        row = {"case": case_label(c), "closure": CLOSURE_NAME[c["closure"]]}
+        for k, v in ips.items():
+            i, j = (COMPONENT_INDEX[part] for part in k.split("|"))
+            row[f"$\\langle e_{i}, e_{j}\\rangle$"] = v
+        ip.append(row)
     fip = pd.DataFrame(ip)
     write_table(tables, "closure_inner_products_u", fip,
                 formats={c: (lambda v: fmt(v, 2, sci_below=1.0)) for c in fip.columns if c not in ("case", "closure")},
-                caption_note="Pairwise inner products of the four field-level components at reverse time T")
+                caption_note="Pairwise inner products of the four field-level components at reverse time T; same symbols as the decomposition table")
     for rp in gates["reference_pairs"]:
         out["reference_pairs"][f"{rp['case']}|{rp['closure']}|{rp['kind']}"] = {
             "pass": rp["pass"], "gate": rp["gate"], "comparisons": rp["comparisons"],
@@ -527,7 +514,7 @@ def analyze_closure(manifest: dict, tables: Path, figures: Path) -> dict:
     rt = []
     for key, cr in out["carrier_refinement"].items():
         case, closure = key.split("|")
-        rt.append({"case": case, "closure": CLOSURE_NAME[closure],
+        rt.append({"case": case + (INADMISSIBLE_MARK if (case, closure) in failed_pairs else ""), "closure": CLOSURE_NAME[closure],
                    "$u$: $M=200$": cr["diffs"]["200"]["u"], "$M=400$": cr["diffs"]["400"]["u"], "$M=800$": cr["diffs"]["800"]["u"],
                    "$q$: $M=200$": cr["diffs"]["200"]["q"], "$M=400$ ": cr["diffs"]["400"]["q"], "$M=800$ ": cr["diffs"]["800"]["q"]})
     frt = pd.DataFrame(rt)
@@ -537,7 +524,7 @@ def analyze_closure(manifest: dict, tables: Path, figures: Path) -> dict:
     hbt = []
     for key, hb in out["h_bridge"].items():
         case, closure = key.split("|")
-        hbt.append({"case": case, "closure": CLOSURE_NAME[closure],
+        hbt.append({"case": case + (INADMISSIBLE_MARK if (case, closure) in failed_pairs else ""), "closure": CLOSURE_NAME[closure],
                     **{f"$h={h:g}$": u for h, u in zip(hb["h"], hb["u"])}, "slope in $h$": hb["u_slope_in_h"]})
     fhb = pd.DataFrame(hbt)
     write_table(tables, "closure_h_bridge", fhb,
@@ -548,26 +535,8 @@ def analyze_closure(manifest: dict, tables: Path, figures: Path) -> dict:
 
 
 def figure_closure(cl: dict, figures: Path) -> None:
-    import matplotlib.pyplot as plt
-    figstyle.apply_paper_style()
-    keys = [k for k in cl["decomposition"]]
-    labels = [f"{k.split('|')[0]}\n{CLOSURE_NAME[k.split('|')[1]]}" for k in keys]
-    fig, ax = plt.subplots(figsize=(7.2, 3.6))
-    width = 0.16
-    shades = ["#111111", "#555555", "#999999", "#cccccc"]
-    hatches = ["", "//", "..", "xx"]
-    x = np.arange(len(keys))
-    for j, comp in enumerate(COMPONENTS):
-        vals = [cl["decomposition"][k]["final"]["u"][comp] for k in keys]
-        ax.bar(x + (j - 1.5) * width, vals, width, color=shades[j], hatch=hatches[j], edgecolor="black", linewidth=0.5,
-               label=COMPONENT_NAME[comp])
-    tot = [cl["decomposition"][k]["final"]["u"]["total"] for k in keys]
-    ax.plot(x, tot, linestyle="none", marker="_", markersize=22, markeredgewidth=2, color=figstyle.GLOB, label="total")
-    ax.set_yscale("log"); ax.set_xticks(x); ax.set_xticklabels(labels)
-    ax.set_ylabel("$L^2$ norm of the component field at $\\tau = T$")
-    ax.legend(frameon=True, ncol=3, fontsize=8)
-    fig.tight_layout(); figures.mkdir(parents=True, exist_ok=True)
-    fig.savefig(figures / "closure_decomposition.pdf"); plt.close(fig)
+    from scripts.plot_revision_figures import figure_closure as render
+    render(cl, figures)
 
 
 def analyze_initial_rate(manifest: dict, tables: Path, figures: Path) -> dict:
@@ -605,34 +574,27 @@ def analyze_initial_rate(manifest: dict, tables: Path, figures: Path) -> dict:
 
 
 def figure_initial_rate(ir: dict, figures: Path) -> None:
-    import matplotlib.pyplot as plt
-    figstyle.apply_paper_style()
-    fig, axes = plt.subplots(1, 2, figsize=(9.2, 3.4))
-    ax = axes[0]
-    taus = np.array(ir["q_level"]["taus"]); r = np.array(ir["q_level"]["ratio_q"]) - 1.0
-    ax.plot(taus, r, color=figstyle.GLOB, marker="o", linestyle="none", label="computed")
-    tt = np.linspace(0, taus.max(), 50)
-    ax.plot(tt, ir["q_level"]["linear_coefficient_of_ratio_minus_one"] * tt, color=figstyle.EXACT, linestyle="--", label="linear fit through the origin")
-    ax.set_xlabel("reverse time $\\tau$"); ax.set_ylabel("$\\|q_{\\mathrm{wrong}}-u_x\\|_2/(s_q\\,\\tau) - 1$")
-    ax.text(0.02, 0.9, "(a)", transform=ax.transAxes, fontsize=11); ax.legend(frameon=True)
-    ax = axes[1]
-    ms = [x["M"] for x in ir["references"]]; ratios = [x["ratio"] for x in ir["references"]]
-    ax.axhspan(1 - ir["gate_band"], 1 + ir["gate_band"], color=figstyle.EXACT, alpha=0.15, label="certificate band")
-    ax.axhline(1.0, color=figstyle.EXACT, linestyle="--", linewidth=1.0)
-    ax.plot(ms, ratios, color=figstyle.GLOB, marker="s", linestyle="-", label="reference solve")
-    ax.set_xscale("log"); ax.set_xticks(ms); ax.set_xticklabels([str(m) for m in ms]); ax.minorticks_off()
-    ax.set_xlabel("reference grid $M$"); ax.set_ylabel("$\\|U_{\\mathrm{wrong}}-u\\|_2/(c_{\\mathrm{rep}}\\tau)$")
-    ax.set_ylim(1 - 1.6 * ir["gate_band"], 1 + 1.6 * ir["gate_band"])
-    ax.text(0.02, 0.9, "(b)", transform=ax.transAxes, fontsize=11); ax.legend(frameon=True, loc="lower right")
-    fig.tight_layout(); figures.mkdir(parents=True, exist_ok=True)
-    fig.savefig(figures / "initial_rate.pdf"); plt.close(fig)
+    from scripts.plot_revision_figures import figure_initial_rate as render
+    render(ir, figures)
 
 
 def analyze_crossover(manifest: dict, tables: Path, figures: Path) -> dict:
     rows = read_rows(manifest, "crossover")
     cont = rows[rows.block == "continuum"].copy()
     part = rows[rows.block == "particle"].copy()
+    # The continuum rows record the latent density rho; the particle rows record the
+    # returned field, which is the kernel density of the final positions, i.e. K_h rho.
+    # The like-for-like continuum values apply the same final smoothing to the
+    # latent coefficients: mode k carries phi_k = exp(-k^2 h^2 / 2).
+    k_mode = schema.CROSSOVER_MODE * math.pi
+    for frame_ in (cont, part):
+        h_ = frame_.kh / k_mode
+        frame_["phi_k"] = np.exp(-0.5 * (k_mode * h_) ** 2)
+        frame_["phi_2k"] = np.exp(-0.5 * (2.0 * k_mode * h_) ** 2)
+        frame_["e_k_out"] = frame_.phi_k * (frame_.a + frame_.e_k) - frame_.a
+        frame_["e_2k_out"] = frame_.phi_2k * frame_.e_2k
     cont["ratio"] = cont.e_2k / cont.e_k.abs()
+    cont["ratio_out"] = cont.e_2k_out / cont.e_k_out.abs()
     cont["pred_ratio"] = cont.pred_e_2k / cont.pred_e_k.abs()
     cont["model_rel_err_2k"] = (cont.pred_e_2k / cont.e_2k - 1).abs()
     cont["model_rel_err_k"] = (cont.pred_e_k / cont.e_k - 1).abs()
@@ -640,6 +602,7 @@ def analyze_crossover(manifest: dict, tables: Path, figures: Path) -> dict:
     for _, r in cont.sort_values(["kh", "a"]).iterrows():
         out["continuum"].append({"a": float(r.a), "kh": float(r.kh), "e_k": float(r.e_k), "e_2k": float(r.e_2k),
                                  "pred_e_k": float(r.pred_e_k), "pred_e_2k": float(r.pred_e_2k), "ratio": float(r.ratio),
+                                 "e_k_out": float(r.e_k_out), "e_2k_out": float(r.e_2k_out), "ratio_out": float(r.ratio_out),
                                  "pred_ratio": float(r.pred_ratio), "harmonic_dominant": bool(r.harmonic_dominant),
                                  "model_rel_err_2k": float(r.model_rel_err_2k), "model_rel_err_k": float(r.model_rel_err_k),
                                  "min_u": float(r.min_u)})
@@ -651,54 +614,38 @@ def analyze_crossover(manifest: dict, tables: Path, figures: Path) -> dict:
     for _, r in part.iterrows():
         out["particle"].append({"a": float(r.a), "kh": float(r.kh), "N": int(r.N), "e_k_particle": float(r.e_k_particle),
                                 "e_2k_particle": float(r.e_2k_particle), "e_k_continuum": float(r.e_k), "e_2k_continuum": float(r.e_2k),
+                                "e_k_continuum_out": float(r.e_k_out), "e_2k_continuum_out": float(r.e_2k_out),
+                                "rel_diff_k_out": float(abs(r.e_k_particle - r.e_k_out) / abs(r.e_k_out)),
+                                "rel_diff_2k_out": float(abs(r.e_2k_particle - r.e_2k_out) / abs(r.e_2k_out)),
+                                "ratio_particle": float(r.e_2k_particle / abs(r.e_k_particle)),
                                 "attenuation_2k": float(r.e_2k_particle / r.e_2k), "signal_ratio": float(r.e_k_particle / r.e_k)})
+    out["max_ratio_out"] = float(cont.ratio_out.max())
     for kh in sorted(cont.kh.unique()):
         r = cont[cont.kh == kh].iloc[0]
         out["low_order_coefficients"][f"{kh:g}"] = {"d": float(r.d), "b": float(r.b), "r1": float(r.r1), "r2": float(r.r2)}
     out["model_max_rel_err_2k"] = float(cont.model_rel_err_2k.max()); out["model_max_rel_err_k"] = float(cont.model_rel_err_k.max())
     t = pd.DataFrame([{"$a$": f"{r['a']:g}", "$kh$": f"{r['kh']:g}", "$e_k$": r["e_k"], "$e_{2k}$": r["e_2k"],
-                       "$e_{2k}/|e_k|$": r["ratio"], "low-order $e_{2k}/|e_k|$": r["pred_ratio"], "harmonic dominant": r["harmonic_dominant"]}
+                       "$e_{2k}/|e_k|$": r["ratio"], "expansion": r["pred_ratio"], "dominant": r["harmonic_dominant"],
+                       "$e^{\\mathrm{out}}_{2k}/|e^{\\mathrm{out}}_k|$": r["ratio_out"]}
                       for r in out["continuum"]])
     write_table(tables, "crossover_continuum", t, formats={"$e_k$": lambda v: fmt(v, 4, sci_below=1e-3), "$e_{2k}$": lambda v: fmt(v, 4, sci_below=1e-3),
-                                                           "$e_{2k}/|e_k|$": lambda v: f"{v:.3f}", "low-order $e_{2k}/|e_k|$": lambda v: f"{v:.3f}"},
-                caption_note="Continuum harmonic transition over the preregistered (a, kh) grid")
-    tp = pd.DataFrame([{"$a$": f"{r['a']:g}", "$N$": r["N"], "particle $e_k$": r["e_k_particle"], "continuum $e_k$": r["e_k_continuum"],
-                        "particle $e_{2k}$": r["e_2k_particle"], "continuum $e_{2k}$": r["e_2k_continuum"], "$e_{2k}$ ratio": r["attenuation_2k"]} for r in out["particle"]])
-    write_table(tables, "crossover_particle", tp, formats={c: (lambda v: fmt(v, 4, sci_below=1e-3)) for c in tp.columns if "e_" in c and "ratio" not in c} | {"$e_{2k}$ ratio": lambda v: f"{v:.3f}"},
-                caption_note="Particle method at kh = 0.264 against its continuum limit")
+                                                           "$e_{2k}/|e_k|$": lambda v: f"{v:.3f}", "expansion": lambda v: f"{v:.3f}",
+                                                           "$e^{\\mathrm{out}}_{2k}/|e^{\\mathrm{out}}_k|$": lambda v: f"{v:.3f}"},
+                caption_note="Continuum harmonic transition over the (a, kh) grid; latent-density errors, the expansion's ratio, and the ratio after the output smoothing")
+    tp = pd.DataFrame([{"$a$": f"{r['a']:g}", "$N$": r["N"], "particle $e_k$": r["e_k_particle"], "$K_h\\rho$: $e_k$": r["e_k_continuum_out"],
+                        "rel. diff.": r["rel_diff_k_out"],
+                        "particle $e_{2k}$": r["e_2k_particle"], "$K_h\\rho$: $e_{2k}$": r["e_2k_continuum_out"], "rel. diff. ": r["rel_diff_2k_out"]}
+                       for r in out["particle"]])
+    write_table(tables, "crossover_particle", tp, formats={c: (lambda v: fmt(v, 4, sci_below=1e-3)) for c in tp.columns if "e_" in c}
+                | {"rel. diff.": lambda v: f"{100 * v:.2f}\\%", "rel. diff. ": lambda v: f"{100 * v:.2f}\\%"},
+                caption_note="Particle method at kh = 0.264 against the continuum latent density after the same final kernel smoothing (K_h rho)")
     figure_crossover(out, figures)
     return out
 
 
 def figure_crossover(co: dict, figures: Path) -> None:
-    import matplotlib.pyplot as plt
-    figstyle.apply_paper_style()
-    fig, axes = plt.subplots(1, 2, figsize=(9.2, 3.6), gridspec_kw={"width_ratios": [1.5, 1.0]})
-    ax = axes[0]
-    ls = {"0.23": ":", "0.264": "-", "0.29": "--"}
-    mk = {"0.23": "^", "0.264": "o", "0.29": "s"}
-    for kh in ("0.23", "0.264", "0.29"):
-        pts = [r for r in co["continuum"] if f"{r['kh']:g}" == kh]
-        a = [r["a"] for r in pts]
-        ax.plot(a, [r["ratio"] for r in pts], color=figstyle.METHOD, linestyle=ls[kh], marker=mk[kh], label=f"computed, $kh={kh}$")
-        ax.plot(a, [r["pred_ratio"] for r in pts], color="#777777", linestyle=ls[kh], marker="none", linewidth=1.2)
-    ax.axhline(1.0, color=figstyle.EXACT, linestyle="--", linewidth=1.0)
-    ax.set_xlabel("amplitude $a$"); ax.set_ylabel("$e_{2k}/|e_k|$")
-    ax.text(0.02, 0.92, "(a)", transform=ax.transAxes, fontsize=11)
-    ax.legend(frameon=True, fontsize=8, loc="lower right")
-    ax = axes[1]
-    pp = [r for r in co["particle"] if r["N"] == 4000]
-    x = np.arange(len(pp)); w = 0.18
-    ax.bar(x - 1.5 * w, [abs(r["e_k_continuum"]) for r in pp], w, color="#999999", edgecolor="black", linewidth=0.5, label="$|e_k|$, continuum")
-    ax.bar(x - 0.5 * w, [abs(r["e_k_particle"]) for r in pp], w, color=figstyle.METHOD, edgecolor="black", linewidth=0.5, label="$|e_k|$, particles")
-    ax.bar(x + 0.5 * w, [r["e_2k_continuum"] for r in pp], w, color="#999999", hatch="//", edgecolor="black", linewidth=0.5, label="$e_{2k}$, continuum")
-    ax.bar(x + 1.5 * w, [r["e_2k_particle"] for r in pp], w, color=figstyle.METHOD, hatch="//", edgecolor="black", linewidth=0.5, label="$e_{2k}$, particles")
-    ax.set_xticks(x); ax.set_xticklabels([f"$a={r['a']:g}$" for r in pp])
-    ax.set_ylabel("modal error at $kh = 0.264$")
-    ax.text(0.90, 0.92, "(b)", transform=ax.transAxes, fontsize=11)
-    ax.legend(frameon=True, fontsize=8, loc="upper left")
-    fig.tight_layout(); figures.mkdir(parents=True, exist_ok=True)
-    fig.savefig(figures / "crossover.pdf"); plt.close(fig)
+    from scripts.plot_revision_figures import figure_crossover as render
+    render(co, figures)
 
 
 def accounting_table(manifest: dict, tables: Path) -> dict:
@@ -738,6 +685,8 @@ def main() -> int:
     summary["closure"] = analyze_closure(manifest, tables, figures)
     summary["initial_rate"] = analyze_initial_rate(manifest, tables, figures)
     summary["crossover"] = analyze_crossover(manifest, tables, figures)
+    from scripts.plot_revision_figures import figure_evidence
+    figure_evidence(manifest, summary, figures)
     (out / "analysis_summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True, default=float) + "\n", encoding="utf-8")
     if args.paper_figures:
         dest = Path(args.paper_figures)
