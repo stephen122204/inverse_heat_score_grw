@@ -47,3 +47,9 @@ python reproduce.py run --J 4 --P 6 --dt 0.05 --dps 80 --output outputs/custom
 `J` sets the number of positive Fourier modes, `P` the denominator series order, `dt` the step in rescaled time, and `dps` the decimal precision. Results are saved in `outputs/custom/custom_run.json`. The target and physical parameters remain those of the paper's fixed example; this is not a solver for arbitrary input data.
 
 Verification and numerical runs use only Python's standard library. The installed packages are needed for plotting. Numerical refinement does not certify time or spectral discretization error.
+
+## Acknowledgments
+
+**Principal Investigator:** [Professor Prabir Daripa](https://artsci.tamu.edu/mathematics/contact/profiles/prabir-daripa.html) — Texas A&M University, Department of Mathematics
+
+Other projects from the Daripa Research Group are available on the [group's GitHub page](https://github.com/Daripa-Research-Group).
