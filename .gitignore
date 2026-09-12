@@ -1,40 +1,17 @@
+# Only the current paper's reproduction package is published.
+/*
+!/.gitignore
+!/README.md
+!/CITATION.cff
+!/requirements.txt
+!/reproduce.py
+!/research/
+/research/*
+!/research/normalized_score/
+/research/normalized_score/*
+!/research/normalized_score/integrate.py
+!/research/normalized_score/reproduce.py
+!/research/normalized_score/manifest.json
+!/research/normalized_score/results/
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
-.Python
-.DS_Store
-*.npz
-outputs/*/
-!outputs/.gitkeep
-.env
-*.egg-info/
-dist/
-build/
-
-# local process files, not part of the release
-FROZEN_NUMBERS.md
-REPORT_*.md
-pyrightconfig.json
-outputs/*.zip
-figures/fig_noise_robustness.*
-scripts/run_baseline_verification.py
-scripts/run_convergence_study.py
-scripts/run_density_estimated_audit.py
-scripts/run_mixture_tests.py
-scripts/run_regularization_suite.py
-scripts/run_sanity_checks.py
-scripts/run_targeted_suite.py
-scripts/run_single.py
-outputs/run_manifest_*.json
-
-# exploratory probe outputs stay local
-exploratory/*/outputs/
-
-# Local editorial notes; GitHub uses the root README only.
-*.md
-*.MD
-*.markdown
-!/README.md
-.local-release-backup/
-__pycache__/

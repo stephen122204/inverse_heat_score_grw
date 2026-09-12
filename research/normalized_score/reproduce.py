@@ -137,17 +137,43 @@ def replay(output: Path, all_runs: bool):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("operation",choices=["verify","figures","replay"])
+    parser.add_argument("operation",choices=["verify","figures","replay","run"])
     parser.add_argument("--output",type=Path,default=ROOT/"generated")
     parser.add_argument("--all",action="store_true",help="Replay every recorded refinement instead of the selected run")
+    parser.add_argument("--J", type=int, default=4, help="Retained positive Fourier modes for a custom run (at least 2)")
+    parser.add_argument("--P", type=int, default=6, help="Denominator series order for a custom run (nonnegative)")
+    parser.add_argument("--dt", default="0.05", help="Requested step in rescaled time for a custom run")
+    parser.add_argument("--dps", type=int, default=80, help="Decimal precision for a custom run (at least 20)")
     args=parser.parse_args()
+    if args.operation == "run":
+        try:
+            step = D(args.dt)
+        except ArithmeticError:
+            parser.error("--dt must be a positive finite decimal")
+        if not step.is_finite() or step <= 0:
+            parser.error("--dt must be a positive finite decimal")
+        if args.J < 2 or args.P < 0 or args.dps < 20:
+            parser.error("Custom runs require J >= 2, P >= 0, and dps >= 20")
     destination = args.output.resolve()
     archive = (ROOT/"results").resolve()
     if destination == ROOT or destination == archive or archive in destination.parents:
         parser.error("Output must be separate from the source and archived results directories")
     if args.operation == "verify": print(json.dumps(verify(),indent=2))
     elif args.operation == "figures": render(args.output)
-    else: replay(args.output,args.all)
+    elif args.operation == "replay": replay(args.output,args.all)
+    else:
+        from integrate import run
+        read_inputs()
+        path = destination / "custom_run.json"
+        if path.exists():
+            parser.error("custom_run.json already exists; choose a new output directory")
+        result = run(args.J, args.P, args.dt, args.dps)
+        destination.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(result, indent=2) + "\n")
+        print(json.dumps({key: result[key] for key in (
+            "J", "P", "dt_requested", "dps", "returned_cos2_full",
+            "returned_cos2_nonlinear_correction")}, indent=2))
+        print(f"Saved {path}")
 
 
 if __name__ == "__main__": main()
