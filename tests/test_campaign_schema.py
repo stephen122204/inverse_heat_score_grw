@@ -1,5 +1,5 @@
 """The campaign schema, the protocol document, and the freeze gate must
-agree.  These tests hold PHASE2C_PROTOCOL.md and campaign_schema.py together:
+agree.  These tests hold PHASE2C_PROTOCOL.txt and campaign_schema.py together:
 amending one without the other fails the suite, which is the enforcement arm
 of the preregistration rules."""
 

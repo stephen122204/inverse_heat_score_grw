@@ -1,4 +1,4 @@
-"""campaign_schema.py — machine-readable form of PHASE2C_PROTOCOL.md.
+"""campaign_schema.py — machine-readable form of PHASE2C_PROTOCOL.txt.
 
 Every preregistered grid, case, default, gate, and study row of the science
 campaign is encoded here as data.  The unit tests hold this module and the
@@ -22,7 +22,7 @@ import re
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent
-PROTOCOL_FILE = REPO / "PHASE2C_PROTOCOL.md"
+PROTOCOL_FILE = REPO / "PHASE2C_PROTOCOL.txt"
 
 # ---------------------------------------------------------------------------
 # Global parameter grids and defaults (protocol Sections 2-6)
@@ -441,7 +441,7 @@ def validate_freeze(text: str) -> None:
         problems.append(f"{len(unchecked)} freeze-checklist boxes are unchecked")
     if problems:
         raise ProtocolNotFrozen(
-            "PHASE2C_PROTOCOL.md: " + "; ".join(problems) + ".  Campaign "
+            "PHASE2C_PROTOCOL.txt: " + "; ".join(problems) + ".  Campaign "
             "execution is authorized only when the status line reads FROZEN "
             "in its own commit and every expected checklist box is checked."
         )

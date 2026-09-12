@@ -30,3 +30,11 @@ outputs/run_manifest_*.json
 
 # exploratory probe outputs stay local
 exploratory/*/outputs/
+
+# Local editorial notes; GitHub uses the root README only.
+*.md
+*.MD
+*.markdown
+!/README.md
+.local-release-backup/
+__pycache__/

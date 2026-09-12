@@ -8,7 +8,6 @@ authors:
     given-names: Stephen
   - family-names: Daripa
     given-names: Prabir
-# TODO(license): no license chosen yet; update before public release.
 license: NOASSERTION
 preferred-citation:
   type: article
@@ -19,4 +18,4 @@ preferred-citation:
     - family-names: Daripa
       given-names: Prabir
   year: 2026
-  notes: "Unpublished manuscript, September 10, 2026. No journal or arXiv identifier assigned."
+  notes: "Unpublished manuscript, September 11, 2026. No journal or arXiv identifier assigned."
